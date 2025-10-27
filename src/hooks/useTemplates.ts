@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Template, CreateTemplateRequest } from '@/types/index';
-import { API_ENDPOINTS } from '@/lib/api';
+import { API_ENDPOINTS, authenticatedFetch } from '@/lib/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -14,7 +14,7 @@ interface UploadTemplateParams {
 }
 
 async function fetchTemplates(): Promise<Template[]> {
-  const response = await fetch(API_ENDPOINTS.TEMPLATES);
+  const response = await authenticatedFetch(API_ENDPOINTS.TEMPLATES);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch templates: ${response.statusText}`);
@@ -48,11 +48,8 @@ async function uploadTemplate({ name, file }: UploadTemplateParams): Promise<Tem
     fileData,
   };
 
-  const response = await fetch(API_ENDPOINTS.TEMPLATES, {
+  const response = await authenticatedFetch(API_ENDPOINTS.TEMPLATES, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(requestData),
   });
 
@@ -70,7 +67,7 @@ async function uploadTemplate({ name, file }: UploadTemplateParams): Promise<Tem
 }
 
 async function deleteTemplate(id: number): Promise<void> {
-  const response = await fetch(`${API_ENDPOINTS.TEMPLATES}?id=${id}`, {
+  const response = await authenticatedFetch(`${API_ENDPOINTS.TEMPLATES}?id=${id}`, {
     method: 'DELETE',
   });
 
