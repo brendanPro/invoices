@@ -1,23 +1,4 @@
-// TypeScript types for the invoice generation system
-
-export interface Template {
-  id: number;
-  name: string;
-  blob_key: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TemplateField {
-  id: number;
-  template_id: number;
-  field_name: string;
-  x_position: number;
-  y_position: number;
-  font_size: number;
-  field_type: 'text' | 'number' | 'date';
-  created_at: string;
-}
+// Invoice-related types
 
 export interface Invoice {
   id: number;
@@ -28,35 +9,7 @@ export interface Invoice {
   template_name?: string;
 }
 
-export interface CreateTemplateRequest {
-  name: string;
-  file: File;
-}
-
-export interface CreateTemplateResponse {
-  success: boolean;
-  template?: Template;
-  error?: string;
-}
-
-export interface CreateTemplateFieldRequest {
-  template_id: number;
-  field_name: string;
-  x_position: number;
-  y_position: number;
-  font_size?: number;
-  field_type?: 'text' | 'number' | 'date';
-}
-
-export interface UpdateTemplateFieldRequest {
-  field_id: number;
-  field_name?: string;
-  x_position?: number;
-  y_position?: number;
-  font_size?: number;
-  field_type?: 'text' | 'number' | 'date';
-}
-
+// Invoice generation requests and responses
 export interface GenerateInvoiceRequest {
   template_id: number;
   invoice_data: Record<string, any>;
@@ -69,8 +22,61 @@ export interface GenerateInvoiceResponse {
   error?: string;
 }
 
-export interface ApiResponse<T = any> {
+// Invoice data structure for form handling
+export interface InvoiceFormData {
+  [key: string]: string | number | Date;
+}
+
+// Invoice field validation
+export interface InvoiceFieldValidation {
+  field_name: string;
+  required: boolean;
+  type: 'text' | 'number' | 'date';
+  min_length?: number;
+  max_length?: number;
+  min_value?: number;
+  max_value?: number;
+  pattern?: string;
+}
+
+// Invoice listing and filtering
+export interface ListInvoicesRequest {
+  page?: number;
+  limit?: number;
+  template_id?: number;
+  search?: string;
+  sort_by?: 'generated_at' | 'template_name';
+  sort_order?: 'asc' | 'desc';
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface ListInvoicesResponse {
   success: boolean;
-  data?: T;
+  invoices?: Invoice[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  error?: string;
+}
+
+// Invoice statistics
+export interface InvoiceStats {
+  total_invoices: number;
+  invoices_this_month: number;
+  invoices_this_year: number;
+  most_used_template?: {
+    template_id: number;
+    template_name: string;
+    count: number;
+  };
+}
+
+export interface InvoiceStatsResponse {
+  success: boolean;
+  stats?: InvoiceStats;
   error?: string;
 }

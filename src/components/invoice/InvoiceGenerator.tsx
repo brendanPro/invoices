@@ -4,7 +4,7 @@ import { TemplateUpload } from './TemplateUpload';
 import { TemplateList } from './TemplateList';
 import { ConfigurationForm } from './ConfigurationForm';
 import { InvoiceDataForm } from './InvoiceDataForm';
-import type { Template } from '@/types/invoice';
+import type { Template } from '@/types/index';
 
 export function InvoiceGenerator() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -37,6 +37,7 @@ export function InvoiceGenerator() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Header - Title and Description */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2">Invoice Generator</h1>
         <p className="text-gray-600">
@@ -44,6 +45,7 @@ export function InvoiceGenerator() {
         </p>
       </div>
 
+      {/* Main Content - Template Management and Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Template Management */}
         <div className="space-y-6">

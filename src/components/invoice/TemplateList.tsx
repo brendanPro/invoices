@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Template, ApiResponse } from '@/types/invoice';
+import type { Template } from '@/types/index';
+import { useTemplates, useDeleteTemplate } from '@/hooks/useTemplates';
 
 interface TemplateListProps {
   onTemplateSelect?: (template: Template) => void;
@@ -9,65 +10,24 @@ interface TemplateListProps {
 }
 
 export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateListProps) {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { data: templates = [], isLoading, error, refetch } = useTemplates();
+  const deleteMutation = useDeleteTemplate();
 
-  const fetchTemplates = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/list-templates');
-      const result: ApiResponse<Template[]> = await response.json();
-
-      if (result.success && result.data) {
-        setTemplates(result.data);
-      } else {
-        setError(result.error || 'Failed to load templates');
-      }
-    } catch (err) {
-      console.error('Error fetching templates:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load templates');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteTemplate = async (id: number) => {
+  const handleDeleteTemplate = async (id: number) => {
     if (!confirm('Are you sure you want to delete this template?')) {
       return;
     }
 
     try {
-      setDeletingId(id);
-      setError(null);
-
-      const response = await fetch(`/api/delete-template?id=${id}`, {
-        method: 'DELETE',
-      });
-      const result: ApiResponse = await response.json();
-
-      if (result.success) {
-        setTemplates(templates.filter(t => t.id !== id));
-        onTemplateDeleted?.();
-      } else {
-        setError(result.error || 'Failed to delete template');
-      }
-    } catch (err) {
-      console.error('Error deleting template:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete template');
-    } finally {
-      setDeletingId(null);
+      await deleteMutation.mutateAsync(id);
+      onTemplateDeleted?.();
+    } catch (error) {
+      // Error is handled by TanStack Query's error state
+      console.error('Delete error:', error);
     }
   };
 
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -82,16 +42,28 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Templates</CardTitle>
-        <Button onClick={fetchTemplates} variant="outline" size="sm">
+        <Button onClick={() => refetch()} variant="outline" size="sm">
           Refresh
         </Button>
       </CardHeader>
       <CardContent>
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-4">
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600">
+              {error instanceof Error ? error.message : 'Failed to load templates'}
+            </p>
+          </div>
+        )}
+
+        {deleteMutation.isError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-4">
+            <p className="text-sm text-red-600">
+              {deleteMutation.error instanceof Error 
+                ? deleteMutation.error.message 
+                : 'Failed to delete template'}
+            </p>
           </div>
         )}
 
@@ -121,10 +93,10 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => deleteTemplate(template.id)}
-                    disabled={deletingId === template.id}
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    disabled={deleteMutation.isPending}
                   >
-                    {deletingId === template.id ? 'Deleting...' : 'Delete'}
+                    {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                   </Button>
                 </div>
               </div>

@@ -13,7 +13,7 @@ A full-stack invoice generation system built with React, Netlify Functions, Post
 ## Architecture
 
 - **Frontend**: React with TypeScript, Tailwind CSS, and Radix UI components
-- **Backend**: Netlify Functions (serverless)
+- **Backend**: Netlify Functions 2.0 (serverless with custom endpoints)
 - **Database**: PostgreSQL for metadata and configurations
 - **File Storage**: Netlify Blobs for PDF templates
 - **PDF Processing**: pdf-lib for PDF manipulation and overlay
@@ -84,14 +84,22 @@ DATABASE_URL=postgresql://username:password@host:port/database
 3. Click "Generate Invoice" to create the PDF
 4. View or download the generated invoice
 
-## API Endpoints
+## API Endpoints (REST API with Functions 2.0)
 
-- `POST /api/upload-template` - Upload a PDF template
-- `GET /api/list-templates` - List all templates
-- `DELETE /api/delete-template` - Delete a template
+### Template Management
+- `GET /api/templates` - List all templates
+- `POST /api/templates` - Upload a PDF template
+- `DELETE /api/templates?id={id}` - Delete a template
+- `GET /api/templates?id={id}` - Get single template
+
+### Configuration Management
 - `POST /api/save-configuration` - Save field configuration
 - `GET /api/get-configuration` - Get field configuration
+
+### Invoice Generation
 - `POST /api/generate-invoice` - Generate invoice PDF
+
+All endpoints use custom URLs defined in the function config, providing cleaner REST API routes.
 
 ## Database Schema
 
@@ -114,6 +122,13 @@ DATABASE_URL=postgresql://username:password@host:port/database
 1. Load the template PDF using pdf-lib
 2. For each configured field, draw text at the specified coordinates
 3. Save the modified PDF and return as base64 data URL
+
+### Functions 2.0 Benefits
+
+- **Custom Endpoints**: Clean API URLs without `.netlify/functions/` prefix
+- **Better Performance**: Enhanced runtime with improved cold start times
+- **Modern API**: Uses standard `Request` and `Response` objects
+- **Enhanced Context**: Access to full context object for advanced features
 
 ### Coordinate System
 

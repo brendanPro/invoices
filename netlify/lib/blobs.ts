@@ -2,23 +2,27 @@ import { getStore } from '@netlify/blobs';
 
 // Get the templates store
 export function getTemplatesStore() {
-  return getStore('templates');
+  // @ts-ignore
+  return getStore('templates',{
+    siteId: "43fd6547-859b-4339-8f13-0b99c93a8ea9",
+    token: "nfp_pSCD9YeSrv3iGovjvVk6bo5gC5n9dJWy4bf0"
+  });
 }
 
 // Blob storage utility functions
 export const blobs = {
-  async uploadTemplate(key: string, buffer: Buffer): Promise<void> {
+  async uploadTemplate(key: string, buffer: ArrayBuffer): Promise<void> {
     const store = getTemplatesStore();
     await store.set(key, buffer);
   },
 
-  async getTemplate(key: string): Promise<Buffer> {
+  async getTemplate(key: string): Promise<ArrayBuffer> {
     const store = getTemplatesStore();
-    const blob = await store.get(key, { type: 'buffer' });
+    const blob = await store.get(key, { type: 'arrayBuffer' });
     if (!blob) {
       throw new Error(`Template with key ${key} not found`);
     }
-    return blob as Buffer;
+    return blob;
   },
 
   async deleteTemplate(key: string): Promise<void> {
