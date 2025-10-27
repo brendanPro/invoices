@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { build, type BuildConfig } from "bun";
 import plugin from "bun-plugin-tailwind";
-import { existsSync } from "fs";
+import { existsSync, copyFileSync } from "fs";
 import { rm } from "fs/promises";
 import path from "path";
 
@@ -166,5 +166,16 @@ const outputTable = result.outputs.map(output => ({
 
 console.table(outputTable);
 const buildTime = (end - start).toFixed(2);
+
+// Copy _redirects file for Netlify deployment
+const redirectsFile = path.join(process.cwd(), "_redirects");
+const redirectsDest = path.join(outdir, "_redirects");
+
+if (existsSync(redirectsFile)) {
+  copyFileSync(redirectsFile, redirectsDest);
+  console.log(`📄 Copied _redirects file to ${path.relative(process.cwd(), redirectsDest)}`);
+} else {
+  console.log(`⚠️  _redirects file not found at ${redirectsFile}`);
+}
 
 console.log(`\n✅ Build completed in ${buildTime}ms\n`);
