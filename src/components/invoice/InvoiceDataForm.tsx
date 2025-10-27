@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Template, TemplateField, ApiResponse } from '@/types/invoice';
+import type { Template, TemplateField, ApiResponse } from '@/types/index';
+import { API_ENDPOINTS } from '@/lib/api';
 
 interface InvoiceDataFormProps {
   template: Template | null;
@@ -56,7 +57,7 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/get-configuration?template_id=${template.id}`);
+      const response = await fetch(API_ENDPOINTS.GET_CONFIGURATION + `?template_id=${template.id}`);
       const result: ApiResponse<TemplateField[]> = await response.json();
 
       if (result.success && result.data) {
@@ -81,7 +82,7 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
       setGenerating(true);
       setError(null);
 
-      const response = await fetch('/api/generate-invoice', {
+      const response = await fetch(API_ENDPOINTS.GENERATE_INVOICE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

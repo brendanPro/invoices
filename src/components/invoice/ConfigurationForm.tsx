@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Template, TemplateField, ApiResponse, CreateTemplateFieldRequest } from '@/types/invoice';
+import type { Template, TemplateField, ApiResponse, CreateTemplateFieldRequest } from '@/types/index';
+import { API_ENDPOINTS } from '@/lib/api';
 
 const fieldSchema = z.object({
   field_name: z.string().min(1, 'Field name is required'),
@@ -54,7 +55,7 @@ export function ConfigurationForm({ template, onConfigurationSaved }: Configurat
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/get-configuration?template_id=${template.id}`);
+      const response = await fetch(API_ENDPOINTS.GET_CONFIGURATION + `?template_id=${template.id}`);
       const result: ApiResponse<TemplateField[]> = await response.json();
 
       if (result.success && result.data) {
@@ -86,7 +87,7 @@ export function ConfigurationForm({ template, onConfigurationSaved }: Configurat
         field_type: data.field_type,
       };
 
-      const response = await fetch('/api/save-configuration', {
+      const response = await fetch(API_ENDPOINTS.SAVE_CONFIGURATION, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ export function ConfigurationForm({ template, onConfigurationSaved }: Configurat
     try {
       setError(null);
 
-      const response = await fetch('/api/save-configuration', {
+      const response = await fetch(API_ENDPOINTS.SAVE_CONFIGURATION, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,11 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CreateTemplateRequest, CreateTemplateResponse, ApiResponse } from '@/types/invoice';
+import { useUploadTemplate } from '@/hooks/useTemplates';
 
 const uploadSchema = z.object({
   name: z.string().min(1, 'Template name is required'),
-  file: z.any().refine((file) => file instanceof File, 'Please select a PDF file'),
+  file: z.any().refine((file) => {
+    if (!file) return false;
+    const actualFile = file instanceof File ? file : file[0];
+    if (!actualFile || !(actualFile instanceof File)) return false;
+    return actualFile.type === 'application/pdf';
+  }, 'Please select a valid PDF file'),
 });
 
 type UploadFormData = z.infer<typeof uploadSchema>;
@@ -20,9 +25,7 @@ interface TemplateUploadProps {
 }
 
 export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const uploadMutation = useUploadTemplate();
 
   const {
     register,
@@ -37,59 +40,28 @@ export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
   const selectedFile = watch('file');
 
   const onSubmit = async (data: UploadFormData) => {
-    setIsUploading(true);
-    setUploadError(null);
-    setUploadSuccess(false);
-
     try {
-      // Convert file to base64
-      const fileData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Remove data:application/pdf;base64, prefix
-          const base64 = result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(data.file);
-      });
-
-      const requestData: CreateTemplateRequest = {
-        name: data.name,
-        file: data.file,
-      };
-
-      const response = await fetch('/api/upload-template', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          fileData,
-        }),
-      });
-
-      const result: CreateTemplateResponse = await response.json();
-
-      if (result.success && result.template) {
-        setUploadSuccess(true);
-        reset();
-        onTemplateUploaded?.(result.template);
-      } else {
-        setUploadError(result.error || 'Upload failed');
+      // Extract the actual file from the form data
+      const file = data.file instanceof File ? data.file : data.file[0];
+      if (!file) {
+        throw new Error('Please select a PDF file');
       }
+
+      const template = await uploadMutation.mutateAsync({
+        name: data.name,
+        file,
+      });
+
+      reset();
+      onTemplateUploaded?.(template);
     } catch (error) {
       console.error('Upload error:', error);
-      setUploadError(error instanceof Error ? error.message : 'Upload failed');
-    } finally {
-      setIsUploading(false);
+      // Error is handled by TanStack Query's error state
     }
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card>
       <CardHeader>
         <CardTitle>Upload Template</CardTitle>
       </CardHeader>
@@ -116,29 +88,37 @@ export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
               {...register('file')}
             />
             {errors.file && (
-              <p className="text-sm text-red-500">{errors.file.message}</p>
+              <p className="text-sm text-red-500">{errors.file.message as string}</p>
             )}
             {selectedFile && (
               <p className="text-sm text-gray-600">
-                Selected: {selectedFile.name}
+                Selected: {selectedFile instanceof File ? selectedFile.name : selectedFile[0]?.name || 'Unknown file'}
               </p>
             )}
           </div>
 
-          {uploadError && (
+          {uploadMutation.isError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{uploadError}</p>
+              <p className="text-sm text-red-600">
+                {uploadMutation.error instanceof Error 
+                  ? uploadMutation.error.message 
+                  : 'Upload failed'}
+              </p>
             </div>
           )}
 
-          {uploadSuccess && (
+          {uploadMutation.isSuccess && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-md">
               <p className="text-sm text-green-600">Template uploaded successfully!</p>
             </div>
           )}
 
-          <Button type="submit" disabled={isUploading} className="w-full">
-            {isUploading ? 'Uploading...' : 'Upload Template'}
+          <Button 
+            type="submit" 
+            disabled={uploadMutation.isPending} 
+            className="w-full"
+          >
+            {uploadMutation.isPending ? 'Uploading...' : 'Upload Template'}
           </Button>
         </form>
       </CardContent>

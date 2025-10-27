@@ -1,63 +1,73 @@
-import { Handler } from '@netlify/functions';
 import { PDFDocument, rgb } from 'pdf-lib';
-import { db } from '../lib/db';
-import { blobs } from '../lib/blobs';
-import type { ApiResponse, GenerateInvoiceResponse, GenerateInvoiceRequest } from '../../src/types/invoice';
+import { db } from '../../lib/db';
+import { blobs } from '../../lib/blobs';
+import type { ApiResponse, GenerateInvoiceResponse, GenerateInvoiceRequest } from '../../../src/types/invoice';
 
-export const handler: Handler = async (event, context) => {
+export const config = {
+  path: '/api/generate-invoice',
+};
+
+export default async (req: Request, context: any) => {
   // Set CORS headers
-  const headers = {
+  const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
   // Handle preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+  if (req.method === 'OPTIONS') {
+    return new Response('', {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ success: false, error: 'Method not allowed' }),
-    };
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {
+      status: 405,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      },
+    });
   }
 
   try {
-    const body: GenerateInvoiceRequest = JSON.parse(event.body || '{}');
+    const body: GenerateInvoiceRequest = await req.json();
     const { template_id, invoice_data } = body;
 
     if (!template_id || !invoice_data) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, error: 'Template ID and invoice data are required' }),
-      };
+      return new Response(JSON.stringify({ success: false, error: 'Template ID and invoice data are required' }), {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
     }
 
     // Get template and its fields
     const template = await db.getTemplate(template_id);
     if (!template) {
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ success: false, error: 'Template not found' }),
-      };
+      return new Response(JSON.stringify({ success: false, error: 'Template not found' }), {
+        status: 404,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
     }
 
     const fields = await db.getTemplateFields(template_id);
     if (fields.length === 0) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, error: 'No fields configured for this template' }),
-      };
+      return new Response(JSON.stringify({ success: false, error: 'No fields configured for this template' }), {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
     }
 
     // Get template PDF from blobs
@@ -98,7 +108,8 @@ export const handler: Handler = async (event, context) => {
 
     // Save generated invoice to blobs
     const invoiceBlobKey = `invoice_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
-    await blobs.uploadTemplate(invoiceBlobKey, Buffer.from(pdfBytes));
+    const pdfBuffer = new Uint8Array(pdfBytes);
+    await blobs.uploadTemplate(invoiceBlobKey, pdfBuffer.buffer);
 
     // Save invoice record to database
     const invoice = await db.createInvoice(template_id, invoice_data, invoiceBlobKey);
@@ -114,14 +125,13 @@ export const handler: Handler = async (event, context) => {
       invoice,
     };
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify(response), {
+      status: 200,
       headers: {
-        ...headers,
+        ...corsHeaders,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(response),
-    };
+    });
   } catch (error) {
     console.error('Error generating invoice:', error);
     
@@ -130,10 +140,12 @@ export const handler: Handler = async (event, context) => {
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
 
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify(response),
-    };
+    return new Response(JSON.stringify(response), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      },
+    });
   }
 };

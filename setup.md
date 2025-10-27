@@ -18,24 +18,31 @@
 Set the following environment variable in your Netlify site settings:
 
 ```
-DATABASE_URL=postgresql://username:password@host:port/database
+NETLIFY_DATABASE_URL=postgresql://username:password@host:port/database
 ```
+
+### API Configuration
+
+The API base URL is configured in `src/lib/api.ts`:
+
+- **Local Development**: Defaults to `http://localhost:9999` (no changes needed)
+- **Production**: Update `src/lib/api.ts` to use your Netlify site URL
 
 ### Example connection strings:
 
 **Supabase:**
 ```
-DATABASE_URL=postgresql://postgres:[password]@[host]:5432/postgres
+NETLIFY_DATABASE_URL=postgresql://postgres:[password]@[host]:5432/postgres
 ```
 
 **Neon:**
 ```
-DATABASE_URL=postgresql://[user]:[password]@[host]/[database]?sslmode=require
+NETLIFY_DATABASE_URL=postgresql://[user]:[password]@[host]/[database]?sslmode=require
 ```
 
 **Railway:**
 ```
-DATABASE_URL=postgresql://postgres:[password]@[host]:5432/railway
+NETLIFY_DATABASE_URL=postgresql://postgres:[password]@[host]:5432/railway
 ```
 
 ## 3. Local Development
@@ -66,8 +73,10 @@ DATABASE_URL=postgresql://postgres:[password]@[host]:5432/railway
    - Build command: `bun run build`
    - Publish directory: `dist`
    - Functions directory: `netlify/functions`
-3. Add the `DATABASE_URL` environment variable
-4. Deploy!
+3. Add the environment variable:
+   - `NETLIFY_DATABASE_URL` - Your PostgreSQL connection string
+4. Update `src/lib/api.ts` with your production URL
+5. Deploy!
 
 ## 5. Usage
 
@@ -77,7 +86,8 @@ DATABASE_URL=postgresql://postgres:[password]@[host]:5432/railway
 
 ## Troubleshooting
 
-- Ensure `DATABASE_URL` is correctly set
+- Ensure `NETLIFY_DATABASE_URL` is correctly set
+- Verify API base URL in `src/lib/api.ts` matches your environment
 - Check Netlify Functions logs for errors
 - Verify database tables were created correctly
 - Test PDF upload with small files first
