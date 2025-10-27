@@ -157,6 +157,26 @@ export class HttpHandler {
   }
 
   /**
+   * Create an unauthorized response (401)
+   */
+  static unauthorized(
+    message: string = 'Unauthorized',
+    options: HttpResponseOptions = {}
+  ): Response {
+    return this.error(message, 401, options);
+  }
+
+  /**
+   * Create a forbidden response (403)
+   */
+  static forbidden(
+    message: string = 'Forbidden',
+    options: HttpResponseOptions = {}
+  ): Response {
+    return this.error(message, 403, options);
+  }
+
+  /**
    * Handle async operations with automatic error handling
    */
   static async handleAsync<T>(

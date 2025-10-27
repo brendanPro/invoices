@@ -2,6 +2,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "allowJs": true,
+    "strictNullChecks": true,
 
     // Bundler mode
     "moduleResolution": "bundler",
