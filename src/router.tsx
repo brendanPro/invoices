@@ -82,7 +82,7 @@ function AuthCallbackComponent() {
 // OAuth callback route (public)
 const authCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/auth/callback',
+  path: '/callback',
   component: AuthCallbackComponent,
 });
 

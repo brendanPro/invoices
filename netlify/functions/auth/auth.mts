@@ -91,7 +91,7 @@ async function handleCallback(req: Request, context: any) {
     if (error) {
       console.error('OAuth error:', error);
       const frontendUrl = process.env.BUN_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-      const errorUrl = `${frontendUrl}/auth/callback?error=${encodeURIComponent(error)}`;
+      const errorUrl = `${frontendUrl}/callback?error=${encodeURIComponent(error)}`;
       
       return new Response(null, {
         status: 302,
@@ -107,7 +107,7 @@ async function handleCallback(req: Request, context: any) {
     // Validate required parameters
     if (!code) {
       const frontendUrl = process.env.BUN_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-      const errorUrl = `${frontendUrl}/auth/callback?error=missing_code`;
+      const errorUrl = `${frontendUrl}/callback?error=missing_code`;
       
       return new Response(null, {
         status: 302,
@@ -130,7 +130,7 @@ async function handleCallback(req: Request, context: any) {
     if (!isEmailAuthorized(userInfo.email)) {
       console.log(`Unauthorized email attempt: ${userInfo.email}`);
       const frontendUrl = process.env.BUN_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-      const errorUrl = `${frontendUrl}/auth/callback?error=unauthorized_email`;
+      const errorUrl = `${frontendUrl}/callback?error=unauthorized_email`;
       
       return new Response(null, {
         status: 302,
@@ -148,7 +148,7 @@ async function handleCallback(req: Request, context: any) {
     
     // Redirect to frontend with auth token
     const frontendUrl = process.env.BUN_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${frontendUrl}/auth/callback?token=${encodeURIComponent(authToken)}&user=${encodeURIComponent(JSON.stringify(userInfo))}`;
+    const redirectUrl = `${frontendUrl}/callback?token=${encodeURIComponent(authToken)}&user=${encodeURIComponent(JSON.stringify(userInfo))}`;
     
     return new Response(null, {
       status: 302,
@@ -162,7 +162,7 @@ async function handleCallback(req: Request, context: any) {
   } catch (error) {
     console.error('Token exchange failed:', error);
     const frontendUrl = process.env.BUN_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-    const errorUrl = `${frontendUrl}/auth/callback?error=token_exchange_failed`;
+    const errorUrl = `${frontendUrl}/callback?error=token_exchange_failed`;
     
     return new Response(null, {
       status: 302,
