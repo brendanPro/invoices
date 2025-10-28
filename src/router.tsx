@@ -32,21 +32,30 @@ const loginRoute = createRoute({
 // OAuth callback component
 function AuthCallbackComponent() {
   const navigate = useNavigate();
+  const [error, setError] = React.useState<string | null>(null);
   
   React.useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('Auth callback: Starting callback handling');
+        console.log('Auth callback: Current URL:', window.location.href);
+        
         const success = handleAuthCallback();
+        console.log('Auth callback: Success:', success);
         
         if (success) {
+          console.log('Auth callback: Navigating to dashboard');
           // Navigate to dashboard after successful authentication
           navigate({ to: '/dashboard' });
         } else {
+          console.log('Auth callback: Authentication failed, navigating to login');
+          setError('Authentication failed');
           // Navigate to login if authentication failed
           navigate({ to: '/login' });
         }
       } catch (error) {
         console.error('Auth callback error:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error');
         navigate({ to: '/login' });
       }
     };
@@ -59,6 +68,12 @@ function AuthCallbackComponent() {
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
         <p className="text-gray-600">Completing authentication...</p>
+        {error && (
+          <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <p className="font-semibold">Error:</p>
+            <p>{error}</p>
+          </div>
+        )}
       </div>
     </div>
   );
