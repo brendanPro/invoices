@@ -2,6 +2,7 @@ import { createRouter, createRoute, createRootRoute, redirect } from '@tanstack/
 import { Login } from '@/pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { AuthCallback } from './pages/AuthCallback';
+import { TemplateWorkflow } from './pages/TemplateWorkflow';
 import type { AuthUser } from '@/lib/auth';
 
 interface AuthContext {
@@ -43,6 +44,19 @@ const dashboardRoute = createRoute({
   },
 });
 
+const templateWorkflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/templates',
+  component: TemplateWorkflow,
+  beforeLoad: ({ context }: { context: { auth?: AuthContext } }) => {
+    if (!context.auth?.isAuthenticated) {
+      throw redirect({
+        to: '/login',
+      });
+    }
+  },
+});
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
@@ -64,6 +78,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   authCallbackRoute,
   dashboardRoute,
+  templateWorkflowRoute,
 ]);
 
 export const router = createRouter({

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from '@tanstack/react-router';
 import type { Template } from '@/types/index';
 import { useTemplates, useDeleteTemplate } from '@/hooks/useTemplates';
 
@@ -12,6 +13,7 @@ interface TemplateListProps {
 export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateListProps) {
   const { data: templates = [], isLoading, error, refetch } = useTemplates();
   const deleteMutation = useDeleteTemplate();
+  const navigate = useNavigate();
 
   const handleDeleteTemplate = async (id: number) => {
     if (!confirm('Are you sure you want to delete this template?')) {
@@ -44,9 +46,14 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Templates</CardTitle>
-        <Button onClick={() => refetch()} variant="outline" size="sm">
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate({ to: '/templates' })} size="sm">
+            Create Template
+          </Button>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {error && (
@@ -68,7 +75,7 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
         )}
 
         {templates.length === 0 ? (
-          <p className="text-gray-600">No templates found. Upload a template to get started.</p>
+          <p className="text-gray-600">No templates found. Click "Create Template" to get started.</p>
         ) : (
           <div className="space-y-3">
             {templates.map((template) => (
