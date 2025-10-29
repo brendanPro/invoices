@@ -64,9 +64,6 @@ export class AuthController {
     }
   }
 
-  /**
-   * Handle user info request - validate token and return user data
-   */
   async getUserInfo(req: Request): Promise<Response> {
     try {
       const authHeader = req.headers.get('Authorization');
