@@ -4,11 +4,11 @@ import type { Template } from '../../../src/types/index';
 
 export class TemplateService {
   /**
-   * Get all templates from the database
+   * Get all templates from the database filtered by user email
    */
-  async getAllTemplates(): Promise<Template[]> {
+  async getAllTemplates(userEmail: string): Promise<Template[]> {
     try {
-      return await drizzleDb.listTemplates();
+      return await drizzleDb.listTemplates(userEmail);
     } catch (error) {
       console.error('Service: Error fetching templates from database:', error);
       throw new Error('Failed to retrieve templates');
@@ -18,7 +18,7 @@ export class TemplateService {
   /**
    * Create a new template
    */
-  async createTemplate(name: string, fileData: string): Promise<Template> {
+  async createTemplate(name: string, fileData: string, userEmail: string): Promise<Template> {
     try {
       // Convert base64 to buffer
       const buffer = Buffer.from(fileData, 'base64');
@@ -31,7 +31,7 @@ export class TemplateService {
       await this.uploadToBlobs(blobKey, buffer);
 
       // Save template metadata to database
-      const template = await this.saveTemplateToDatabase(name, blobKey);
+      const template = await this.saveTemplateToDatabase(name, blobKey, userEmail);
 
       return template;
     } catch (error) {
@@ -43,16 +43,16 @@ export class TemplateService {
   /**
    * Delete a template and its associated data
    */
-  async deleteTemplate(templateId: number): Promise<void> {
+  async deleteTemplate(templateId: number, userEmail: string): Promise<void> {
     try {
       // Get template to find blob key
-      const template = await drizzleDb.getTemplateById(templateId);
+      const template = await drizzleDb.getTemplateById(templateId, userEmail);
       if (!template) {
         throw new Error('Template not found');
       }
 
       // Delete from database (cascade will handle template_fields)
-      await drizzleDb.deleteTemplate(templateId);
+      await drizzleDb.deleteTemplate(templateId, userEmail);
 
       // Delete from Netlify Blobs
       await this.deleteFromBlobs(template.blob_key);
@@ -65,9 +65,9 @@ export class TemplateService {
   /**
    * Check if a template exists
    */
-  async templateExists(templateId: number): Promise<boolean> {
+  async templateExists(templateId: number, userEmail: string): Promise<boolean> {
     try {
-      return await drizzleDb.templateExists(templateId);
+      return await drizzleDb.templateExists(templateId, userEmail);
     } catch (error) {
       console.error('Service: Error checking template existence:', error);
       return false;
@@ -75,11 +75,11 @@ export class TemplateService {
   }
 
   /**
-   * Get a single template by ID
+   * Get a single template by ID filtered by user email
    */
-  async getTemplateById(templateId: number): Promise<Template | null> {
+  async getTemplateById(templateId: number, userEmail: string): Promise<Template | null> {
     try {
-      return await drizzleDb.getTemplateById(templateId);
+      return await drizzleDb.getTemplateById(templateId, userEmail);
     } catch (error) {
       console.error('Service: Error fetching template by ID:', error);
       throw new Error('Failed to retrieve template');
@@ -111,9 +111,9 @@ export class TemplateService {
   /**
    * Save template metadata to database
    */
-  private async saveTemplateToDatabase(name: string, blobKey: string): Promise<Template> {
+  private async saveTemplateToDatabase(name: string, blobKey: string, userEmail: string): Promise<Template> {
     try {
-      return await drizzleDb.createTemplate(name, blobKey);
+      return await drizzleDb.createTemplate(name, blobKey, userEmail);
     } catch (error) {
       console.error('Service: Error saving template to database:', error);
       throw new Error('Failed to save template metadata');

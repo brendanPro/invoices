@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,6 +26,7 @@ interface TemplateUploadProps {
 
 export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
   const uploadMutation = useUploadTemplate();
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
     register,
@@ -38,6 +39,17 @@ export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
   });
 
   const selectedFile = watch('file');
+
+  useEffect(() => {
+    if (uploadMutation.isSuccess) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [uploadMutation.isSuccess]);
 
   const onSubmit = async (data: UploadFormData) => {
     try {
@@ -56,7 +68,6 @@ export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
       onTemplateUploaded?.(template);
     } catch (error) {
       console.error('Upload error:', error);
-      // Error is handled by TanStack Query's error state
     }
   };
 
@@ -107,7 +118,7 @@ export function TemplateUpload({ onTemplateUploaded }: TemplateUploadProps) {
             </div>
           )}
 
-          {uploadMutation.isSuccess && (
+          {showSuccess && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-md">
               <p className="text-sm text-green-600">Template uploaded successfully!</p>
             </div>

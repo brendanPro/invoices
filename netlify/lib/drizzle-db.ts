@@ -9,6 +9,7 @@ function transformTemplate(drizzleTemplate: any): Template {
     id: drizzleTemplate.id,
     name: drizzleTemplate.name,
     blob_key: drizzleTemplate.blob_key,
+    user_email: drizzleTemplate.user_email,
     created_at: drizzleTemplate.created_at.toISOString(),
     updated_at: drizzleTemplate.updated_at.toISOString(),
   };
@@ -41,32 +42,42 @@ function transformInvoice(drizzleInvoice: any): Invoice {
 // Database utility functions using Drizzle ORM
 export const drizzleDb = {
   // Template operations
-  async createTemplate(name: string, blobKey: string): Promise<Template> {
+  async createTemplate(name: string, blobKey: string, userEmail: string): Promise<Template> {
     const result = await db.insert(templates).values({
       name,
       blob_key: blobKey,
+      user_email: userEmail,
     }).returning();
     
     return transformTemplate(result[0]);
   },
 
-  async getTemplateById(id: number): Promise<Template | null> {
-    const result = await db.select().from(templates).where(eq(templates.id, id)).limit(1);
+  async getTemplateById(id: number, userEmail: string): Promise<Template | null> {
+    const result = await db.select().from(templates)
+      .where(and(eq(templates.id, id), eq(templates.user_email, userEmail)))
+      .limit(1);
     return result[0] ? transformTemplate(result[0]) : null;
   },
 
-  async listTemplates(): Promise<Template[]> {
-    const result = await db.select().from(templates).orderBy(desc(templates.created_at));
+  async listTemplates(userEmail: string): Promise<Template[]> {
+    const result = await db.select().from(templates)
+      .where(eq(templates.user_email, userEmail))
+      .orderBy(desc(templates.created_at));
     return result.map(transformTemplate);
   },
 
-  async deleteTemplate(id: number): Promise<Template | null> {
-    const result = await db.delete(templates).where(eq(templates.id, id)).returning();
+  async deleteTemplate(id: number, userEmail: string): Promise<Template | null> {
+    const result = await db.delete(templates)
+      .where(and(eq(templates.id, id), eq(templates.user_email, userEmail)))
+      .returning();
     return result[0] ? transformTemplate(result[0]) : null;
   },
 
-  async templateExists(id: number): Promise<boolean> {
-    const result = await db.select({ id: templates.id }).from(templates).where(eq(templates.id, id)).limit(1);
+  async templateExists(id: number, userEmail: string): Promise<boolean> {
+    const result = await db.select({ id: templates.id })
+      .from(templates)
+      .where(and(eq(templates.id, id), eq(templates.user_email, userEmail)))
+      .limit(1);
     return result.length > 0;
   },
 
@@ -174,11 +185,11 @@ export const drizzleDb = {
   },
 
   // Configuration operations (combining template and fields)
-  async getTemplateConfiguration(templateId: number): Promise<{
+  async getTemplateConfiguration(templateId: number, userEmail: string): Promise<{
     template: Template;
     fields: TemplateField[];
   } | null> {
-    const template = await this.getTemplateById(templateId);
+    const template = await this.getTemplateById(templateId, userEmail);
     if (!template) return null;
 
     const fields = await this.getTemplateFields(templateId);

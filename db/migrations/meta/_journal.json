@@ -8,6 +8,13 @@
       "when": 1761568684471,
       "tag": "0000_sticky_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761748813620,
+      "tag": "0001_spicy_penance",
+      "breakpoints": true
     }
   ]
 }
