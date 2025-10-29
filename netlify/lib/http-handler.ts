@@ -1,5 +1,15 @@
 import type { ApiResponse } from '../../src/types/index';
 
+export enum HttpMethod {
+  GET = 'GET',
+  POST = 'POST',
+  PUT = 'PUT',
+  DELETE = 'DELETE',
+  PATCH = 'PATCH',
+  OPTIONS = 'OPTIONS',
+  HEAD = 'HEAD'
+}
+
 export interface HttpResponseOptions {
   status?: number;
   headers?: Record<string, string>;
@@ -174,6 +184,26 @@ export class HttpHandler {
     options: HttpResponseOptions = {}
   ): Response {
     return this.error(message, 403, options);
+  }
+
+  /**
+   * Create a redirect response (302)
+   */
+  static redirect(
+    url: string,
+    options: HttpResponseOptions = {}
+  ): Response {
+    const { headers = {}, cors = true } = options;
+    
+    const customHeaders = {
+      'Location': url,
+      ...headers,
+    };
+
+    return new Response(null, {
+      status: 302,
+      headers: this.buildHeaders(customHeaders, cors),
+    });
   }
 
   /**
