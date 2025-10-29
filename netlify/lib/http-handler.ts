@@ -199,7 +199,6 @@ export class HttpHandler {
       'Location': url,
       ...headers,
     };
-
     return new Response(null, {
       status: 302,
       headers: this.buildHeaders(customHeaders, cors),
