@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TemplateUpload } from '../templates/TemplateUpload';
 import { TemplateList } from '../templates/TemplateList';
 import { ConfigurationForm } from './ConfigurationForm';
 import { InvoiceDataForm } from './InvoiceDataForm';
@@ -10,10 +9,6 @@ export function InvoiceGenerator() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
 
-  const handleTemplateUploaded = () => {
-    // Refresh template list or handle success
-    console.log('Template uploaded successfully');
-  };
 
   const handleTemplateSelected = (template: Template) => {
     setSelectedTemplate(template);
@@ -49,7 +44,6 @@ export function InvoiceGenerator() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Template Management */}
         <div className="space-y-6">
-          <TemplateUpload onTemplateUploaded={handleTemplateUploaded} />
           <TemplateList
             onTemplateSelect={handleTemplateSelected}
             onTemplateDeleted={handleTemplateDeleted}
