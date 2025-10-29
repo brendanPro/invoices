@@ -20,10 +20,12 @@ export const templates = pgTable('templates', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   name: varchar('name', { length: 255 }).notNull(),
   blob_key: varchar('blob_key', { length: 255 }).notNull().unique(),
+  user_email: varchar('user_email', { length: 255 }).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   blobKeyIdx: index('idx_templates_blob_key').on(table.blob_key),
+  userEmailIdx: index('idx_templates_user_email').on(table.user_email),
 }));
 
 // Template fields table

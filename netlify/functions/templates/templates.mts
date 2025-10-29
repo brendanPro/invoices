@@ -1,12 +1,12 @@
 import { TemplateController } from './template.controller';
-import { HttpHandler } from '../../lib/http-handler';
+import { HttpHandler, HttpMethod } from '../../lib/http-handler';
 import { requireAuth } from '../../lib/auth-middleware';
 
 export const config = {
   path: '/api/templates',
 };
 
-const ALLOWED_METHODS = ['GET', 'POST', 'DELETE', 'OPTIONS'];
+const ALLOWED_METHODS = [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.OPTIONS];
 const templateController = new TemplateController();
 
 export default async (req: Request) => {
@@ -16,25 +16,26 @@ export default async (req: Request) => {
   const methodError = HttpHandler.validateMethod(req, ALLOWED_METHODS);
   if (methodError) return methodError;
 
-  // Require authentication for all template operations
   const authResult = await requireAuth(req);
   if (!authResult.authenticated) {
     return authResult.response!;
   }
 
+  const userEmail = authResult.user!.email;
+
   try {
     switch (req.method) {
-      case 'GET':
+      case HttpMethod.GET:
         const queryParams = HttpHandler.extractQueryParams(req);
-        if (queryParams.has('id')) return await templateController.getTemplate(req);
+        if (queryParams.has('id')) return await templateController.getTemplate(req, userEmail);
         
-        return await templateController.listTemplates();
+        return await templateController.listTemplates(userEmail);
         
-      case 'POST':
-        return await templateController.createTemplate(req);
+      case HttpMethod.POST:
+        return await templateController.createTemplate(req, userEmail);
       
-      case 'DELETE':
-        return await templateController.deleteTemplate(req);
+      case HttpMethod.DELETE:
+        return await templateController.deleteTemplate(req, userEmail);
       
       default:
         return HttpHandler.methodNotAllowed(ALLOWED_METHODS);

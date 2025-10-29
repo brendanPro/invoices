@@ -10,11 +10,11 @@ export class TemplateController {
   }
 
   /**
-   * Handle GET request - List all templates
+   * Handle GET request - List all templates filtered by user email
    */
-  async listTemplates(): Promise<Response> {
+  async listTemplates(userEmail: string): Promise<Response> {
     return HttpHandler.handleAsync(
-      () => this.templateService.getAllTemplates(),
+      () => this.templateService.getAllTemplates(userEmail),
       'Failed to retrieve templates'
     );
   }
@@ -22,7 +22,7 @@ export class TemplateController {
   /**
    * Handle POST request - Create new template
    */
-  async createTemplate(req: Request): Promise<Response> {
+  async createTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
       const body = await HttpHandler.extractJson<CreateTemplateRequest>(req);
       const { name, fileData } = body;
@@ -51,7 +51,7 @@ export class TemplateController {
         return HttpHandler.validationError('File data must be valid base64 encoded data');
       }
 
-      const template = await this.templateService.createTemplate(name, fileData);
+      const template = await this.templateService.createTemplate(name, fileData, userEmail);
       return HttpHandler.created(template);
 
     } catch (error) {
@@ -63,7 +63,7 @@ export class TemplateController {
   /**
    * Handle DELETE request - Delete template by ID
    */
-  async deleteTemplate(req: Request): Promise<Response> {
+  async deleteTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
       const queryParams = HttpHandler.extractQueryParams(req);
       const templateId = queryParams.get('id');
@@ -79,12 +79,12 @@ export class TemplateController {
       }
 
       // Check if template exists
-      const templateExists = await this.templateService.templateExists(id);
+      const templateExists = await this.templateService.templateExists(id, userEmail);
       if (!templateExists) {
         return HttpHandler.notFound('Template not found');
       }
 
-      await this.templateService.deleteTemplate(id);
+      await this.templateService.deleteTemplate(id, userEmail);
       return HttpHandler.success({ message: 'Template deleted successfully' });
 
     } catch (error) {
@@ -94,9 +94,9 @@ export class TemplateController {
   }
 
   /**
-   * Handle GET request - Get single template by ID
+   * Handle GET request - Get single template by ID filtered by user email
    */
-  async getTemplate(req: Request): Promise<Response> {
+  async getTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
       const queryParams = HttpHandler.extractQueryParams(req);
       const templateId = queryParams.get('id');
@@ -110,7 +110,7 @@ export class TemplateController {
         return HttpHandler.validationError('Template ID must be a valid positive integer');
       }
 
-      const template = await this.templateService.getTemplateById(id);
+      const template = await this.templateService.getTemplateById(id, userEmail);
       if (!template) {
         return HttpHandler.notFound('Template not found');
       }

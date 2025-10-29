@@ -16,17 +16,12 @@ export interface AuthResult {
   response?: Response;
 }
 
-/**
- * Extract JWT token from Authorization header or cookies
- */
 function extractToken(req: Request): string | null {
-  // Try Authorization header first
   const authHeader = req.headers.get('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
 
-  // Try cookie as fallback
   const cookieHeader = req.headers.get('Cookie');
   if (cookieHeader) {
     const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
@@ -41,9 +36,7 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
-/**
- * Check if email is in the authorized whitelist
- */
+
 function isEmailAuthorized(email: string): boolean {
   const authorizedEmails = process.env.AUTHORIZED_EMAILS;
   
@@ -58,9 +51,6 @@ function isEmailAuthorized(email: string): boolean {
   return emailList.includes(normalizedEmail);
 }
 
-/**
- * Verify custom JWT token directly
- */
 async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
   try {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
@@ -90,10 +80,6 @@ async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
   }
 }
 
-/**
- * Require authentication middleware
- * Returns user object if authenticated, error response if not
- */
 export async function requireAuth(req: Request): Promise<AuthResult> {
   try {
     const token = extractToken(req);
@@ -127,10 +113,6 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
   }
 }
 
-/**
- * Optional authentication middleware
- * Returns user object if authenticated, but doesn't fail if not
- */
 export async function optionalAuth(req: Request): Promise<AuthResult> {
   try {
     const token = extractToken(req);

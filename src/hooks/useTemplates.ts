@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Template, CreateTemplateRequest } from '@/types/index';
 import { API_ENDPOINTS, authenticatedFetch } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -83,10 +84,15 @@ async function deleteTemplate(id: number): Promise<void> {
 }
 
 export function useTemplates() {
+  const { user } = useAuth();
+  // Use a stable email value to prevent query key changes mid-render
+  const userEmail = user?.email ?? null;
+  
   return useQuery({
-    queryKey: ['templates'],
+    queryKey: ['templates', userEmail],
     queryFn: fetchTemplates,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userEmail, // Only fetch when user is authenticated
   });
 }
 
@@ -97,7 +103,11 @@ export function useUploadTemplate() {
     mutationFn: uploadTemplate,
     onSuccess: () => {
       // Invalidate and refetch templates after successful upload
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      // Use a pattern to invalidate all template queries (will match current user's query)
+      queryClient.invalidateQueries({ 
+        queryKey: ['templates'],
+        exact: false 
+      });
     },
     onError: (error) => {
       console.error('Template upload failed:', error);
@@ -112,7 +122,11 @@ export function useDeleteTemplate() {
     mutationFn: deleteTemplate,
     onSuccess: () => {
       // Invalidate and refetch templates after successful deletion
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      // Use a pattern to invalidate all template queries (will match current user's query)
+      queryClient.invalidateQueries({ 
+        queryKey: ['templates'],
+        exact: false 
+      });
     },
     onError: (error) => {
       console.error('Template deletion failed:', error);

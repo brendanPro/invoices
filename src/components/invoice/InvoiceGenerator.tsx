@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TemplateUpload } from './TemplateUpload';
-import { TemplateList } from './TemplateList';
+import { TemplateUpload } from '../templates/TemplateUpload';
+import { TemplateList } from '../templates/TemplateList';
 import { ConfigurationForm } from './ConfigurationForm';
 import { InvoiceDataForm } from './InvoiceDataForm';
 import type { Template } from '@/types/index';

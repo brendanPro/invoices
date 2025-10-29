@@ -2,10 +2,11 @@ import { createRouter, createRoute, createRootRoute, redirect } from '@tanstack/
 import { Login } from '@/pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { AuthCallback } from './pages/AuthCallback';
+import type { AuthUser } from '@/lib/auth';
 
 interface AuthContext {
   isAuthenticated: boolean;
-  user: any;
+  user: AuthUser | null;
 }
 
 const rootRoute = createRootRoute({});
