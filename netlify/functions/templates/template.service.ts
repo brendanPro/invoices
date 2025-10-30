@@ -22,10 +22,10 @@ export class TemplateService {
     try {
       // Convert base64 to buffer
       const buffer = Buffer.from(fileData, 'base64');
-      
+
       // Generate unique blob key
       const blobKey = this.generateBlobKey();
-      console.log("Service: Generated blob key:", blobKey);
+      console.log('Service: Generated blob key:', blobKey);
 
       // Upload to Netlify Blobs
       await this.uploadToBlobs(blobKey, buffer);
@@ -46,7 +46,7 @@ export class TemplateService {
   async deleteTemplate(templateId: number, userEmail: string): Promise<void> {
     try {
       // Get template to find blob key
-      const template = await drizzleDb.getTemplateById(templateId, userEmail);
+      const template = await drizzleDb.getTemplateById(templateId);
       if (!template) {
         throw new Error('Template not found');
       }
@@ -67,6 +67,12 @@ export class TemplateService {
    */
   async templateExists(templateId: number, userEmail: string): Promise<boolean> {
     try {
+      console.log(
+        'Service: Checking template existence for template ID:',
+        templateId,
+        'and user email:',
+        userEmail,
+      );
       return await drizzleDb.templateExists(templateId, userEmail);
     } catch (error) {
       console.error('Service: Error checking template existence:', error);
@@ -79,7 +85,7 @@ export class TemplateService {
    */
   async getTemplateById(templateId: number, userEmail: string): Promise<Template | null> {
     try {
-      return await drizzleDb.getTemplateById(templateId, userEmail);
+      return await drizzleDb.getTemplateById(templateId);
     } catch (error) {
       console.error('Service: Error fetching template by ID:', error);
       throw new Error('Failed to retrieve template');
@@ -111,7 +117,11 @@ export class TemplateService {
   /**
    * Save template metadata to database
    */
-  private async saveTemplateToDatabase(name: string, blobKey: string, userEmail: string): Promise<Template> {
+  private async saveTemplateToDatabase(
+    name: string,
+    blobKey: string,
+    userEmail: string,
+  ): Promise<Template> {
     try {
       return await drizzleDb.createTemplate(name, blobKey, userEmail);
     } catch (error) {
@@ -144,7 +154,7 @@ export class TemplateService {
    */
   validateFileData(fileData: string): boolean {
     if (typeof fileData !== 'string') return false;
-    
+
     // Basic base64 validation
     const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
     return base64Regex.test(fileData) && fileData.length > 0;

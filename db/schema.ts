@@ -35,6 +35,8 @@ export const templateFields = pgTable('template_fields', {
   field_name: varchar('field_name', { length: 255 }).notNull(),
   x_position: decimal('x_position', { precision: 10, scale: 2 }).notNull(),
   y_position: decimal('y_position', { precision: 10, scale: 2 }).notNull(),
+  width: decimal('width', { precision: 10, scale: 2 }).notNull(),
+  height: decimal('height', { precision: 10, scale: 2 }).notNull(),
   font_size: decimal('font_size', { precision: 5, scale: 2 }).default('12'),
   field_type: fieldTypeEnum('field_type').default('text'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

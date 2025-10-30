@@ -47,7 +47,7 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Templates</CardTitle>
         <div className="flex gap-2">
-          <Button onClick={() => navigate({ to: '/templates' })} size="sm">
+          <Button onClick={() => navigate({ to: '/templates', search: {} })} size="sm">
             Create Template
           </Button>
           <Button onClick={() => refetch()} variant="outline" size="sm">
@@ -96,6 +96,16 @@ export function TemplateList({ onTemplateSelect, onTemplateDeleted }: TemplateLi
                     onClick={() => onTemplateSelect?.(template)}
                   >
                     Select
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => navigate({ 
+                      to: '/templates',
+                      search: { templateId: template.id },
+                    })}
+                  >
+                    Configure
                   </Button>
                   <Button
                     variant="destructive"

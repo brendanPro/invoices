@@ -48,6 +48,11 @@ const templateWorkflowRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/templates',
   component: TemplateWorkflow,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      templateId: search.templateId ? Number(search.templateId) : undefined,
+    } as { templateId?: number };
+  },
   beforeLoad: ({ context }: { context: { auth?: AuthContext } }) => {
     if (!context.auth?.isAuthenticated) {
       throw redirect({

@@ -7,7 +7,7 @@ export enum HttpMethod {
   DELETE = 'DELETE',
   PATCH = 'PATCH',
   OPTIONS = 'OPTIONS',
-  HEAD = 'HEAD'
+  HEAD = 'HEAD',
 }
 
 export interface HttpResponseOptions {
@@ -25,14 +25,48 @@ export class HttpHandler {
   };
 
   /**
-   * Create a successful response
+   * Return a binary response with optional CORS and custom headers
    */
-  static success<T = any>(
-    data: T, 
-    options: HttpResponseOptions = {}
+  static binary(
+    data: BodyInit | null,
+    contentType: string,
+    options: HttpResponseOptions = {},
   ): Response {
     const { status = 200, headers = {}, cors = true } = options;
-    
+    const customHeaders: Record<string, string> = {
+      'Content-Type': contentType,
+      ...headers,
+    };
+    return new Response(data, {
+      status,
+      headers: this.buildHeaders(customHeaders, cors),
+    });
+  }
+
+  /**
+   * Return a PDF response with common headers
+   */
+  static pdf(data: BodyInit | null, filename: string, options: HttpResponseOptions = {}): Response {
+    const cacheHeaders: Record<string, string> = {
+      'Content-Disposition': `inline; filename="${filename}.pdf"`,
+      'Cache-Control': 'public, max-age=3600',
+    };
+    const merged: HttpResponseOptions = {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...cacheHeaders,
+      },
+    };
+    return this.binary(data, 'application/pdf', merged);
+  }
+
+  /**
+   * Create a successful response
+   */
+  static success<T = any>(data: T, options: HttpResponseOptions = {}): Response {
+    const { status = 200, headers = {}, cors = true } = options;
+
     const response: ApiResponse<T> = {
       success: true,
       data,
@@ -48,14 +82,14 @@ export class HttpHandler {
    * Create an error response
    */
   static error(
-    error: string | Error, 
+    error: string | Error,
     status: number = 500,
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Response {
     const { headers = {}, cors = true } = options;
-    
+
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
+
     const response: ApiResponse = {
       success: false,
       error: errorMessage,
@@ -70,10 +104,7 @@ export class HttpHandler {
   /**
    * Create a validation error response
    */
-  static validationError(
-    message: string,
-    options: HttpResponseOptions = {}
-  ): Response {
+  static validationError(message: string, options: HttpResponseOptions = {}): Response {
     return this.error(message, 400, options);
   }
 
@@ -82,7 +113,7 @@ export class HttpHandler {
    */
   static notFound(
     message: string = 'Resource not found',
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Response {
     return this.error(message, 404, options);
   }
@@ -92,10 +123,10 @@ export class HttpHandler {
    */
   static methodNotAllowed(
     allowedMethods: string[] = ['GET', 'POST', 'PUT', 'DELETE'],
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Response {
     const { headers = {}, cors = true } = options;
-    
+
     const response: ApiResponse = {
       success: false,
       error: 'Method not allowed',
@@ -103,7 +134,7 @@ export class HttpHandler {
 
     const customHeaders = {
       ...headers,
-      'Allow': allowedMethods.join(', '),
+      Allow: allowedMethods.join(', '),
     };
 
     return new Response(JSON.stringify(response), {
@@ -117,7 +148,7 @@ export class HttpHandler {
    */
   static corsPreflight(options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
-    
+
     return new Response('', {
       status: 200,
       headers: this.buildHeaders(headers, cors),
@@ -127,10 +158,7 @@ export class HttpHandler {
   /**
    * Create a created response (201)
    */
-  static created<T = any>(
-    data: T,
-    options: HttpResponseOptions = {}
-  ): Response {
+  static created<T = any>(data: T, options: HttpResponseOptions = {}): Response {
     return this.success(data, { ...options, status: 201 });
   }
 
@@ -139,7 +167,7 @@ export class HttpHandler {
    */
   static noContent(options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
-    
+
     return new Response('', {
       status: 204,
       headers: this.buildHeaders(headers, cors),
@@ -149,10 +177,7 @@ export class HttpHandler {
   /**
    * Create a bad request response (400)
    */
-  static badRequest(
-    message: string = 'Bad request',
-    options: HttpResponseOptions = {}
-  ): Response {
+  static badRequest(message: string = 'Bad request', options: HttpResponseOptions = {}): Response {
     return this.error(message, 400, options);
   }
 
@@ -161,7 +186,7 @@ export class HttpHandler {
    */
   static internalError(
     message: string = 'Internal server error',
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Response {
     return this.error(message, 500, options);
   }
@@ -171,7 +196,7 @@ export class HttpHandler {
    */
   static unauthorized(
     message: string = 'Unauthorized',
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Response {
     return this.error(message, 401, options);
   }
@@ -179,24 +204,18 @@ export class HttpHandler {
   /**
    * Create a forbidden response (403)
    */
-  static forbidden(
-    message: string = 'Forbidden',
-    options: HttpResponseOptions = {}
-  ): Response {
+  static forbidden(message: string = 'Forbidden', options: HttpResponseOptions = {}): Response {
     return this.error(message, 403, options);
   }
 
   /**
    * Create a redirect response (302)
    */
-  static redirect(
-    url: string,
-    options: HttpResponseOptions = {}
-  ): Response {
+  static redirect(url: string, options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
-    
+
     const customHeaders = {
-      'Location': url,
+      Location: url,
       ...headers,
     };
     return new Response(null, {
@@ -211,7 +230,7 @@ export class HttpHandler {
   static async handleAsync<T>(
     operation: () => Promise<T>,
     errorMessage: string = 'Operation failed',
-    options: HttpResponseOptions = {}
+    options: HttpResponseOptions = {},
   ): Promise<Response> {
     try {
       const result = await operation();
@@ -227,9 +246,9 @@ export class HttpHandler {
    */
   private static buildHeaders(
     customHeaders: Record<string, string> = {},
-    cors: boolean = true
+    cors: boolean = true,
   ): Record<string, string> {
-    return cors 
+    return cors
       ? { ...this.DEFAULT_CORS_HEADERS, ...customHeaders }
       : { 'Content-Type': 'application/json', ...customHeaders };
   }
@@ -237,10 +256,7 @@ export class HttpHandler {
   /**
    * Validate request method
    */
-  static validateMethod(
-    request: Request,
-    allowedMethods: string[]
-  ): Response | null {
+  static validateMethod(request: Request, allowedMethods: string[]): Response | null {
     if (!allowedMethods.includes(request.method)) {
       return this.methodNotAllowed(allowedMethods);
     }
@@ -281,7 +297,7 @@ export class HttpHandler {
    */
   static validateRequiredFields(
     body: Record<string, any>,
-    requiredFields: string[]
+    requiredFields: string[],
   ): string | null {
     for (const field of requiredFields) {
       if (!body[field] || (typeof body[field] === 'string' && body[field].trim() === '')) {
@@ -296,7 +312,7 @@ export class HttpHandler {
    */
   static validateFieldTypes(
     body: Record<string, any>,
-    fieldTypes: Record<string, string>
+    fieldTypes: Record<string, string>,
   ): string | null {
     for (const [field, expectedType] of Object.entries(fieldTypes)) {
       const value = body[field];

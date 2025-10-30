@@ -20,9 +20,11 @@ function transformTemplateField(drizzleField: any): TemplateField {
     id: drizzleField.id,
     template_id: drizzleField.template_id,
     field_name: drizzleField.field_name,
-    x_position: parseFloat(drizzleField.x_position),
-    y_position: parseFloat(drizzleField.y_position),
-    font_size: parseFloat(drizzleField.font_size),
+    x_position: drizzleField.x_position.toString(),
+    y_position: drizzleField.y_position.toString(),
+    width: drizzleField.width.toString(),
+    height: drizzleField.height.toString(),
+    font_size: drizzleField.font_size.toString(),
     field_type: drizzleField.field_type,
     created_at: drizzleField.created_at.toISOString(),
   };
@@ -52,9 +54,9 @@ export const drizzleDb = {
     return transformTemplate(result[0]);
   },
 
-  async getTemplateById(id: number, userEmail: string): Promise<Template | null> {
+  async getTemplateById(id: number): Promise<Template | null> {
     const result = await db.select().from(templates)
-      .where(and(eq(templates.id, id), eq(templates.user_email, userEmail)))
+      .where(eq(templates.id, id))
       .limit(1);
     return result[0] ? transformTemplate(result[0]) : null;
   },
@@ -81,32 +83,55 @@ export const drizzleDb = {
     return result.length > 0;
   },
 
-  // Template field operations
-  async createTemplateField(templateId: number, fieldData: {
-    field_name: string;
-    x_position: number;
-    y_position: number;
-    font_size?: number;
-    field_type?: 'text' | 'number' | 'date';
-  }): Promise<TemplateField> {
-    const result = await db.insert(templateFields).values({
-      template_id: templateId,
-      field_name: fieldData.field_name,
-      x_position: fieldData.x_position.toString(),
-      y_position: fieldData.y_position.toString(),
-      font_size: fieldData.font_size?.toString() || '12',
-      field_type: fieldData.field_type || 'text',
-    }).returning();
-    
-    return transformTemplateField(result[0]);
-  },
-
   async getTemplateFields(templateId: number): Promise<TemplateField[]> {
     const result = await db.select().from(templateFields)
       .where(eq(templateFields.template_id, templateId))
       .orderBy(templateFields.field_name);
     
     return result.map(transformTemplateField);
+  },
+
+  async createTemplateField(fieldData: {
+    template_id: number;
+    field_name: string;
+    x_position: number;
+    y_position: number;
+    width: number;
+    height: number;
+    font_size: number;
+    field_type: 'text' | 'number' | 'date';
+  }): Promise<TemplateField> {
+    const result = await db.insert(templateFields).values({
+      template_id: fieldData.template_id,
+      field_name: fieldData.field_name,
+      x_position: fieldData.x_position.toString(),
+      y_position: fieldData.y_position.toString(),
+      width: fieldData.width.toString(),
+      height: fieldData.height.toString(),
+      font_size: fieldData.font_size.toString(),
+      field_type: fieldData.field_type,
+    }).returning();
+
+    return transformTemplateField(result[0]);
+  },
+
+  async getTemplateFieldById(fieldId: number): Promise<TemplateField | null> {
+    const result = await db.select().from(templateFields)
+      .where(eq(templateFields.id, fieldId))
+      .limit(1);
+    
+    return result.length > 0 ? transformTemplateField(result[0]) : null;
+  },
+
+  async getTemplateFieldByName(templateId: number, fieldName: string): Promise<TemplateField | null> {
+    const result = await db.select().from(templateFields)
+      .where(and(
+        eq(templateFields.template_id, templateId),
+        eq(templateFields.field_name, fieldName)
+      ))
+      .limit(1);
+    
+    return result.length > 0 ? transformTemplateField(result[0]) : null;
   },
 
   async updateTemplateField(fieldId: number, fieldData: {
@@ -195,25 +220,6 @@ export const drizzleDb = {
     const fields = await this.getTemplateFields(templateId);
     
     return { template, fields };
-  },
-
-  async saveTemplateConfiguration(templateId: number, fields: Omit<TemplateField, 'id' | 'template_id' | 'created_at'>[]): Promise<void> {
-    // Delete existing fields
-    await this.deleteTemplateFields(templateId);
-    
-    // Insert new fields
-    if (fields.length > 0) {
-      await db.insert(templateFields).values(
-        fields.map(field => ({
-          template_id: templateId,
-          field_name: field.field_name,
-          x_position: field.x_position.toString(),
-          y_position: field.y_position.toString(),
-          font_size: field.font_size.toString(),
-          field_type: field.field_type,
-        }))
-      );
-    }
   },
 };
 
