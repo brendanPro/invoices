@@ -9,19 +9,13 @@ export class TemplateController {
     this.templateService = new TemplateService();
   }
 
-  /**
-   * Handle GET request - List all templates filtered by user email
-   */
   async listTemplates(userEmail: string): Promise<Response> {
     return HttpHandler.handleAsync(
       () => this.templateService.getAllTemplates(userEmail),
-      'Failed to retrieve templates'
+      'Failed to retrieve templates',
     );
   }
 
-  /**
-   * Handle POST request - Create new template
-   */
   async createTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
       const body = await HttpHandler.extractJson<CreateTemplateRequest>(req);
@@ -36,7 +30,7 @@ export class TemplateController {
       // Validate field types
       const typeError = HttpHandler.validateFieldTypes(body, {
         name: 'string',
-        fileData: 'string'
+        fileData: 'string',
       });
       if (typeError) {
         return HttpHandler.validationError(typeError);
@@ -44,7 +38,9 @@ export class TemplateController {
 
       // Additional business validation
       if (!this.templateService.validateTemplateName(name)) {
-        return HttpHandler.validationError('Template name must be a non-empty string (max 255 characters)');
+        return HttpHandler.validationError(
+          'Template name must be a non-empty string (max 255 characters)',
+        );
       }
 
       if (!this.templateService.validateFileData(fileData)) {
@@ -53,16 +49,12 @@ export class TemplateController {
 
       const template = await this.templateService.createTemplate(name, fileData, userEmail);
       return HttpHandler.created(template);
-
     } catch (error) {
       console.error('Controller: Error creating template:', error);
       return HttpHandler.internalError('Failed to create template');
     }
   }
 
-  /**
-   * Handle DELETE request - Delete template by ID
-   */
   async deleteTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
       const queryParams = HttpHandler.extractQueryParams(req);
@@ -86,28 +78,17 @@ export class TemplateController {
 
       await this.templateService.deleteTemplate(id, userEmail);
       return HttpHandler.success({ message: 'Template deleted successfully' });
-
     } catch (error) {
       console.error('Controller: Error deleting template:', error);
       return HttpHandler.internalError('Failed to delete template');
     }
   }
 
-  /**
-   * Handle GET request - Get single template by ID filtered by user email
-   */
   async getTemplate(req: Request, userEmail: string): Promise<Response> {
     try {
-      const queryParams = HttpHandler.extractQueryParams(req);
-      const templateId = queryParams.get('id');
-
-      if (!templateId) {
-        return HttpHandler.validationError('Template ID is required');
-      }
-
-      const id = parseInt(templateId, 10);
-      if (isNaN(id) || id <= 0) {
-        return HttpHandler.validationError('Template ID must be a valid positive integer');
+      const id = this.getTemplateId(req);
+      if (id instanceof Response) {
+        return id;
       }
 
       const template = await this.templateService.getTemplateById(id, userEmail);
@@ -116,10 +97,34 @@ export class TemplateController {
       }
 
       return HttpHandler.success(template);
-
     } catch (error) {
       console.error('Controller: Error fetching template:', error);
       return HttpHandler.internalError('Failed to retrieve template');
     }
+  }
+
+  async isTemplateExists(req: Request, userEmail: string): Promise<boolean> {
+    const id = this.getTemplateId(req);
+    if (id instanceof Response) {
+      return false;
+    }
+    return this.templateService.templateExists(id, userEmail);
+  }
+
+  // this is not good it shwould throw an error if the template id is not valid.
+  // modify this when we get to the error handling.
+  private getTemplateId(req: Request): number | Response {
+    const url = new URL(req.url);
+    const templateId = url.pathname.split('/')[3];
+
+    if (!templateId) {
+      return HttpHandler.validationError('Template ID is required');
+    }
+
+    const id = parseInt(templateId, 10);
+    if (isNaN(id) || id <= 0) {
+      return HttpHandler.validationError('Template ID must be a valid positive integer');
+    }
+    return id;
   }
 }

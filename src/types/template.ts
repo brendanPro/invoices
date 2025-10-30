@@ -16,6 +16,8 @@ export interface TemplateField {
   x_position: number;
   y_position: number;
   font_size: number;
+  width: number;
+  height: number;
   field_type: 'text' | 'number' | 'date';
   created_at: string;
 }
@@ -53,6 +55,8 @@ export interface CreateTemplateFieldRequest {
   field_name: string;
   x_position: number;
   y_position: number;
+  width?: number;
+  height?: number;
   font_size?: number;
   field_type?: FieldType;
 }
@@ -65,7 +69,7 @@ export interface CreateTemplateFieldResponse {
 
 export interface UpdateTemplateFieldRequest {
   field_id: number;
-  field_name?: string;
+  field_name: string;
   x_position?: number;
   y_position?: number;
   font_size?: number;

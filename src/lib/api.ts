@@ -12,11 +12,14 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Template management (consolidated endpoint)
   TEMPLATES: `${API_CONFIG.BASE_URL}/api/templates`,
-  
+
+  // PDF fetch endpoint
+  PDF: `${API_CONFIG.BASE_URL}/api/pdf`,
+
   // Configuration management
   SAVE_CONFIGURATION: `${API_CONFIG.BASE_URL}/api/save-configuration`,
   GET_CONFIGURATION: `${API_CONFIG.BASE_URL}/api/get-configuration`,
-  
+
   // Invoice generation
   GENERATE_INVOICE: `${API_CONFIG.BASE_URL}/api/generate-invoice`,
 };
@@ -42,7 +45,7 @@ export function getAuthHeaders(): Record<string, string> {
  */
 export async function authenticatedFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   const headers = {
     ...getAuthHeaders(),
@@ -60,7 +63,7 @@ export async function authenticatedFetch(
     sessionStorage.removeItem('invoice_generator_auth');
     sessionStorage.removeItem('invoice_generator_token');
     sessionStorage.removeItem('oauth_state');
-    
+
     // Redirect to login page
     window.location.href = '/login';
   }
