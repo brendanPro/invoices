@@ -8,7 +8,7 @@ import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import * as pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 
-if (GlobalWorkerOptions) {
+if (GlobalWorkerOptions && GlobalWorkerOptions.workerSrc) {
   GlobalWorkerOptions.workerSrc = pdfWorker;
 }
 
