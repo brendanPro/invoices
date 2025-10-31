@@ -5,11 +5,11 @@ import { API_ENDPOINTS, authenticatedFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearch } from '@tanstack/react-router';
 import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
-import pdfjsLib, { getDocument } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import * as pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 
-if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+if (GlobalWorkerOptions) {
+  GlobalWorkerOptions.workerSrc = pdfWorker;
 }
 
 interface InteractivePdfViewerProps {
