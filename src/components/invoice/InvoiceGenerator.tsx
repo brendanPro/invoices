@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TemplateList } from '../templates/TemplateList';
+import { InvoiceList } from './InvoiceList';
 import { ConfigurationForm } from './ConfigurationForm';
 import { InvoiceDataForm } from './InvoiceDataForm';
 import type { Template } from '@/types/index';
@@ -8,7 +9,6 @@ import type { Template } from '@/types/index';
 export function InvoiceGenerator() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
-
 
   const handleTemplateSelected = (template: Template) => {
     setSelectedTemplate(template);
@@ -41,7 +41,7 @@ export function InvoiceGenerator() {
       </div>
 
       {/* Main Content - Template Management and Configuration */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Template Management */}
         <div className="space-y-6">
           <TemplateList
@@ -50,16 +50,17 @@ export function InvoiceGenerator() {
           />
         </div>
 
-        {/* Right Column - Configuration and Generation */}
+        {/* Middle Column - Configuration and Generation */}
         <div className="space-y-6">
-          <ConfigurationForm
-            template={selectedTemplate}
-            onConfigurationSaved={handleConfigurationSaved}
-          />
           <InvoiceDataForm
             template={selectedTemplate}
             onInvoiceGenerated={handleInvoiceGenerated}
           />
+        </div>
+
+        {/* Right Column - Invoice List */}
+        <div className="space-y-6">
+          <InvoiceList />
         </div>
       </div>
 
@@ -71,9 +72,7 @@ export function InvoiceGenerator() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-green-600 font-medium">
-                Invoice generated successfully!
-              </p>
+              <p className="text-green-600 font-medium">Invoice generated successfully!</p>
               <div className="flex gap-4">
                 <a
                   href={generatedPdfUrl}
