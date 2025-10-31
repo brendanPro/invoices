@@ -16,12 +16,8 @@ export const API_ENDPOINTS = {
   // PDF fetch endpoint
   PDF: `${API_CONFIG.BASE_URL}/api/pdf`,
 
-  // Configuration management
-  SAVE_CONFIGURATION: `${API_CONFIG.BASE_URL}/api/save-configuration`,
-  GET_CONFIGURATION: `${API_CONFIG.BASE_URL}/api/get-configuration`,
-
   // Invoice generation
-  GENERATE_INVOICE: `${API_CONFIG.BASE_URL}/api/generate-invoice`,
+  INVOICES: `${API_CONFIG.BASE_URL}/api/invoices`,
 };
 
 /**

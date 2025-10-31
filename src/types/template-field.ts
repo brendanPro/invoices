@@ -1,7 +1,7 @@
 export interface TemplateField {
   id: number;
   template_id: number;
-  name: string;
+  field_name: string;
   x_position: string; // decimal as string
   y_position: string; // decimal as string
   width: string; // decimal as string

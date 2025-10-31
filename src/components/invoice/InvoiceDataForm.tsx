@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Template, TemplateField, ApiResponse } from '@/types/index';
-import { API_ENDPOINTS } from '@/lib/api';
+import type { Template } from '@/types/index';
+import type { TemplateField } from '@/types/template-field';
+import { useTemplateFields } from '@/hooks/useTemplateFields';
+import { useSaveInvoiceData, useGenerateInvoice, downloadBlob } from '@/hooks/useInvoices';
 
 interface InvoiceDataFormProps {
   template: Template | null;
@@ -15,16 +17,28 @@ interface InvoiceDataFormProps {
 }
 
 export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFormProps) {
-  const [fields, setFields] = useState<TemplateField[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+
+  // Fetch template fields using React Query hook
+  const templateId = useMemo(() => (template ? Number(template.id) : 0), [template]);
+  const {
+    data: fields = [],
+    isLoading: loading,
+    error: fieldsError,
+  } = useTemplateFields(templateId);
+
+  // Invoice mutations
+  const saveInvoiceMutation = useSaveInvoiceData();
+  const generateInvoiceMutation = useGenerateInvoice();
+
+  // Computed loading state
+  const isProcessing = saveInvoiceMutation.isPending || generateInvoiceMutation.isPending;
 
   // Create dynamic schema based on fields
-  const createSchema = (templateFields: TemplateField[]) => {
+  const schema = useMemo(() => {
     const schemaFields: Record<string, z.ZodTypeAny> = {};
-    
-    templateFields.forEach(field => {
+
+    fields.forEach((field) => {
       switch (field.field_type) {
         case 'number':
           schemaFields[field.field_name] = z.number().optional();
@@ -38,9 +52,8 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
     });
 
     return z.object(schemaFields);
-  };
+  }, [fields]);
 
-  const [schema, setSchema] = useState(createSchema([]));
   const {
     register,
     handleSubmit,
@@ -50,73 +63,50 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
     resolver: zodResolver(schema),
   });
 
-  const fetchFields = async () => {
-    if (!template) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(API_ENDPOINTS.GET_CONFIGURATION + `?template_id=${template.id}`);
-      const result: ApiResponse<TemplateField[]> = await response.json();
-
-      if (result.success && result.data) {
-        setFields(result.data);
-        const newSchema = createSchema(result.data);
-        setSchema(newSchema);
-      } else {
-        setError(result.error || 'Failed to load fields');
-      }
-    } catch (err) {
-      console.error('Error fetching fields:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load fields');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const onSubmit = async (data: Record<string, any>) => {
     if (!template) return;
 
     try {
-      setGenerating(true);
       setError(null);
 
-      const response = await fetch(API_ENDPOINTS.GENERATE_INVOICE, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          template_id: template.id,
-          invoice_data: data,
-        }),
+      // Step 1: Save invoice data (POST /api/invoices)
+      const savedInvoice = await saveInvoiceMutation.mutateAsync({
+        templateId: template.id,
+        invoiceData: data,
       });
 
-      const result = await response.json();
+      // Step 2: Generate invoice PDF (GET /api/invoices/:id)
+      const pdfBlob = await generateInvoiceMutation.mutateAsync(savedInvoice.id);
 
-      if (result.success && result.pdf_url) {
-        onInvoiceGenerated?.(result.pdf_url);
-        reset();
-      } else {
-        setError(result.error || 'Failed to generate invoice');
-      }
+      // Download the PDF blob
+      const filename = `invoice-${savedInvoice.id}-${new Date().toISOString().split('T')[0]}.pdf`;
+      downloadBlob(pdfBlob, filename);
+
+      // Create object URL for preview (if callback is provided)
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      onInvoiceGenerated?.(pdfUrl);
+
+      reset();
     } catch (err) {
-      console.error('Error generating invoice:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate invoice');
-    } finally {
-      setGenerating(false);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process invoice';
+      setError(errorMessage);
     }
   };
 
+  // Update error state when fields error occurs
+  useEffect(() => {
+    if (fieldsError) {
+      setError(fieldsError instanceof Error ? fieldsError.message : 'Failed to load fields');
+    }
+  }, [fieldsError]);
+
+  // Reset form when template changes
   useEffect(() => {
     if (template) {
-      fetchFields();
-    } else {
-      setFields([]);
-      setSchema(createSchema([]));
+      reset();
+      setError(null);
     }
-  }, [template]);
+  }, [template?.id, reset]);
 
   if (!template) {
     return (
@@ -138,7 +128,12 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
           <CardTitle>Invoice Data</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600">Loading fields...</p>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading fields...</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -166,15 +161,11 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
               {fields.map((field) => (
                 <div key={field.id} className="space-y-2">
                   <Label htmlFor={field.field_name}>
-                    {field.field_name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {field.field_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                   </Label>
-                  
+
                   {field.field_type === 'date' ? (
-                    <Input
-                      id={field.field_name}
-                      type="date"
-                      {...register(field.field_name)}
-                    />
+                    <Input id={field.field_name} type="date" {...register(field.field_name)} />
                   ) : field.field_type === 'number' ? (
                     <Input
                       id={field.field_name}
@@ -183,13 +174,9 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
                       {...register(field.field_name, { valueAsNumber: true })}
                     />
                   ) : (
-                    <Input
-                      id={field.field_name}
-                      type="text"
-                      {...register(field.field_name)}
-                    />
+                    <Input id={field.field_name} type="text" {...register(field.field_name)} />
                   )}
-                  
+
                   {errors[field.field_name] && (
                     <p className="text-sm text-red-500">
                       {errors[field.field_name]?.message as string}
@@ -199,8 +186,12 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
               ))}
             </div>
 
-            <Button type="submit" disabled={generating} className="w-full">
-              {generating ? 'Generating Invoice...' : 'Generate Invoice'}
+            <Button type="submit" disabled={isProcessing} className="w-full">
+              {isProcessing
+                ? saveInvoiceMutation.isPending
+                  ? 'Saving Data...'
+                  : 'Generating Invoice...'
+                : 'Save Data & Generate Invoice'}
             </Button>
           </form>
         )}
