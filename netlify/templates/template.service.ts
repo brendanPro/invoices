@@ -4,11 +4,11 @@ import type { ITemplatesRepository } from '@netlify/templates/ITemplatesReposito
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
 import type { IFieldsService } from '@netlify/fields/IFieldsService';
 
-export class TemplateService implements ITemplateService{
+export class TemplateService implements ITemplateService {
   private readonly repository: ITemplatesRepository;
   private readonly fieldsService: IFieldsService;
 
-  constructor(repository: ITemplatesRepository, fieldsService: IFieldsService){
+  constructor(repository: ITemplatesRepository, fieldsService: IFieldsService) {
     this.repository = repository;
     this.fieldsService = fieldsService;
   }
