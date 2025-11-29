@@ -105,6 +105,15 @@ export function FieldSidebar({
                         <span className="text-xs text-gray-500">
                           {field.font_size}px
                         </span>
+                        {field.color && (
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="w-4 h-4 rounded border border-gray-300"
+                              style={{ backgroundColor: field.color }}
+                              title={`Color: ${field.color}`}
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         Position: {Math.round(parseFloat(field.x_position))}, {Math.round(parseFloat(field.y_position))}

@@ -15,6 +15,7 @@ function transformField(drizzleField: any): Field {
     height: drizzleField.height.toString(),
     font_size: drizzleField.font_size.toString(),
     field_type: drizzleField.field_type,
+    color: drizzleField.color || '#000000',
     created_at: drizzleField.created_at.toISOString(),
   };
 }
@@ -31,6 +32,7 @@ export class FieldsRepository implements IFieldsRepository {
         height: fieldData.height.toString(),
         font_size: fieldData.font_size.toString(),
         field_type: fieldData.field_type,
+        color: fieldData.color || '#000000',
       })
       .returning();
 
@@ -80,6 +82,7 @@ export class FieldsRepository implements IFieldsRepository {
     if (fieldData.y_position !== undefined) updateData.y_position = fieldData.y_position.toString();
     if (fieldData.font_size !== undefined) updateData.font_size = fieldData.font_size.toString();
     if (fieldData.field_type !== undefined) updateData.field_type = fieldData.field_type;
+    if (fieldData.color !== undefined) updateData.color = fieldData.color;
 
     const result = await db.update(templateFields)
       .set(updateData)
