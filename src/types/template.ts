@@ -1,29 +1,6 @@
-// Template-related types
-
-export interface Template {
-  id: number;
-  name: string;
-  blob_key: string;
-  user_email: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TemplateField {
-  id: number;
-  template_id: number;
-  field_name: string;
-  x_position: number;
-  y_position: number;
-  font_size: number;
-  width: number;
-  height: number;
-  field_type: 'text' | 'number' | 'date';
-  created_at: string;
-}
-
-// Template field types
-export type FieldType = 'text' | 'number' | 'date';
+import type { Template } from "@types/template";
+import type { FieldType } from "@types/field";
+import type { Field } from "@types/field";
 
 // Template creation and update requests
 export interface CreateTemplateRequest {
@@ -63,7 +40,7 @@ export interface CreateTemplateFieldRequest {
 
 export interface CreateTemplateFieldResponse {
   success: boolean;
-  field?: TemplateField;
+  field?: Field;
   error?: string;
 }
 
@@ -78,7 +55,7 @@ export interface UpdateTemplateFieldRequest {
 
 export interface UpdateTemplateFieldResponse {
   success: boolean;
-  field?: TemplateField;
+  field?: Field;
   error?: string;
 }
 
@@ -116,13 +93,13 @@ export interface ListTemplatesResponse {
 // Template configuration
 export interface TemplateConfiguration {
   template_id: number;
-  fields: TemplateField[];
+  fields: Field[];
   template: Template;
 }
 
 export interface SaveConfigurationRequest {
   template_id: number;
-  fields: Omit<TemplateField, 'id' | 'template_id' | 'created_at'>[];
+  fields: Omit<Field, 'id' | 'template_id' | 'created_at'>[];
 }
 
 export interface SaveConfigurationResponse {

@@ -1,5 +1,5 @@
 import { AuthController } from './auth.controller';
-import { HttpHandler, HttpMethod } from '../../lib/http-handler';
+import { HttpHandler, HttpMethod } from '@netlify/lib/http-handler';
 import type { Config } from '@netlify/functions';
 
 const BASE_PATH = '/api/auth';

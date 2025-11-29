@@ -1,11 +1,12 @@
-import { HttpHandler, HttpMethod } from '../../lib/http-handler';
-import { requireAuth } from '../../lib/auth-middleware';
-import { blobs } from '../../lib/blobs';
-import { drizzleDb } from '../../lib/drizzle-db';
+import { HttpHandler, HttpMethod } from '@netlify/lib/http-handler';
+import { blobs } from '@netlify/lib/blobs';
+import { TemplatesRepository } from '@netlify/templates/templates.repository';
 
 export const config = {
   path: '/api/pdf',
 };
+
+const templatesRepository = new TemplatesRepository();
 
 const ALLOWED_METHODS = [HttpMethod.GET, HttpMethod.OPTIONS];
 
@@ -33,7 +34,7 @@ export default async (req: Request) => {
     }
 
     // Verify template ownership
-    const template = await drizzleDb.getTemplateById(id);
+    const template = await templatesRepository.getTemplateById(id);
     if (!template) {
       return HttpHandler.notFound('Template not found or access denied');
     }

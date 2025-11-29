@@ -9,7 +9,7 @@ interface ApiResponse<T> {
 }
 
 async function fetchTemplateFields(templateId: number): Promise<TemplateField[]> {
-  const response = await authenticatedFetch(`${API_ENDPOINTS.TEMPLATES}/${templateId}/fields`);
+  const response = await authenticatedFetch(API_ENDPOINTS.FIELDS(templateId));
 
   if (!response.ok) {
     throw new Error(`Failed to fetch template fields: ${response.statusText}`);
@@ -28,7 +28,7 @@ async function createTemplateField(
   templateId: number,
   fieldData: CreateTemplateFieldRequest,
 ): Promise<TemplateField> {
-  const response = await authenticatedFetch(`${API_ENDPOINTS.TEMPLATES}/${templateId}/fields`, {
+  const response = await authenticatedFetch(API_ENDPOINTS.FIELDS(templateId), {
     method: 'POST',
     body: JSON.stringify(fieldData),
   });
@@ -48,7 +48,7 @@ async function createTemplateField(
 
 async function deleteTemplateField(templateId: number, fieldId: number): Promise<void> {
   const response = await authenticatedFetch(
-    `${API_ENDPOINTS.TEMPLATES}/${templateId}/fields/${fieldId}`,
+    `${API_ENDPOINTS.FIELDS(templateId)}/${fieldId}`,
     {
       method: 'DELETE',
     },

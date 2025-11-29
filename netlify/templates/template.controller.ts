@@ -1,12 +1,12 @@
-import type { Template, CreateTemplateRequest } from '../../../src/types/index';
-import { TemplateService } from './template.service';
-import { HttpHandler } from '../../lib/http-handler';
+import type { Template, CreateTemplateRequest } from '@/types/index';
+import { TemplateService } from '@netlify/templates/template.service';
+import { HttpHandler } from '@netlify/lib/http-handler';
 
 export class TemplateController {
   private templateService: TemplateService;
 
-  constructor() {
-    this.templateService = new TemplateService();
+  constructor(templateService: TemplateService) {
+    this.templateService = templateService;
   }
 
   async listTemplates(userEmail: string): Promise<Response> {

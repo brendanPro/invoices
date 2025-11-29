@@ -12,7 +12,7 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Template management (consolidated endpoint)
   TEMPLATES: `${API_CONFIG.BASE_URL}/api/templates`,
-
+  FIELDS: (templateId) => `${API_ENDPOINTS.TEMPLATES}/${templateId}/fields`,
   // PDF fetch endpoint
   PDF: `${API_CONFIG.BASE_URL}/api/pdf`,
 
