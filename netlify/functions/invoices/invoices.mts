@@ -1,13 +1,19 @@
-import { InvoiceController } from './invoice.controller';
-import { HttpHandler, HttpMethod } from '../../lib/http-handler';
-import { requireAuth } from '../../lib/auth-middleware';
+import { HttpHandler, HttpMethod } from '@netlify/lib/http-handler';
+import { requireAuth } from '@netlify/lib/auth-middleware';
+import { InvoiceModule } from '@netlify/invoices/invoice.module';  
+import { TemplateService } from '@netlify/templates/template.service';
+import { TemplatesRepository } from '@netlify/templates/templates.repository';
+import { FieldService } from '@netlify/fields/field.service';
+import { FieldsRepository } from '@netlify/fields/fields.repository';
 
 export const config = {
   path: ['/api/invoices', '/api/invoices/:invoice_id'],
 };
 
 const ALLOWED_METHODS = [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.OPTIONS];
-const invoiceController = new InvoiceController();
+const templateService = new TemplateService(new TemplatesRepository(), new FieldService(new FieldsRepository()));
+const invoiceModule = new InvoiceModule(templateService);
+const invoiceController = invoiceModule.controller;
 
 export default async (req: Request) => {
   const corsResponse = HttpHandler.handleCors(req);

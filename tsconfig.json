@@ -13,7 +13,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@netlify/*": ["./netlify/*"],
+      "@types/*": ["./types/*"],
+      "@db/*": ["./db/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"]

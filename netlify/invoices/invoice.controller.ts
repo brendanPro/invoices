@@ -1,6 +1,5 @@
-import type { Invoice } from '../../../src/types/invoice';
-import { InvoiceService } from './invoice.service';
-import { HttpHandler } from '../../lib/http-handler';
+import { HttpHandler } from '@netlify/lib/http-handler';
+import type { IInvoiceService } from '@netlify/invoices/IInvoiceService';
 
 interface CreateInvoiceRequest {
   template_id: number;
@@ -8,33 +7,10 @@ interface CreateInvoiceRequest {
 }
 
 export class InvoiceController {
-  private invoiceService: InvoiceService;
+  private invoiceService: IInvoiceService;
 
-  constructor() {
-    this.invoiceService = new InvoiceService();
-  }
-
-  /**
-   * Extract invoice ID from request URL
-   */
-  private getInvoiceId(req: Request): number | Response | null {
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-
-    // /api/invoices -> ['api', 'invoices'] - no ID
-    // /api/invoices/:invoice_id -> ['api', 'invoices', ':invoice_id'] - has ID
-    if (pathParts.length < 3) {
-      return null; // No invoice ID in path
-    }
-
-    const invoiceId = pathParts[2]; // Skip 'api' and 'invoices'
-
-    const id = parseInt(invoiceId, 10);
-    if (isNaN(id) || id <= 0) {
-      return HttpHandler.validationError('Invoice ID must be a valid positive integer');
-    }
-
-    return id;
+  constructor(invoiceService: IInvoiceService) {
+    this.invoiceService = invoiceService;
   }
 
   async getInvoice(req: Request, userEmail: string): Promise<Response> {
@@ -144,5 +120,23 @@ export class InvoiceController {
       }
       return HttpHandler.internalError('Failed to delete invoice');
     }
+  }
+
+  private getInvoiceId(req: Request): number | Response | null {
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+
+    if (pathParts.length < 3) {
+      return null;
+    }
+
+    const invoiceId = pathParts[2];
+
+    const id = parseInt(invoiceId, 10);
+    if (isNaN(id) || id <= 0) {
+      return HttpHandler.validationError('Invoice ID must be a valid positive integer');
+    }
+
+    return id;
   }
 }

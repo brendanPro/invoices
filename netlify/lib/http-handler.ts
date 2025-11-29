@@ -1,4 +1,4 @@
-import type { ApiResponse } from '../../src/types/index';
+import type { ApiResponse } from '@/types/index';
 
 export enum HttpMethod {
   GET = 'GET',
