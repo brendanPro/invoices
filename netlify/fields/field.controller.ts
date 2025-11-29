@@ -30,7 +30,6 @@ export class FieldController {
       const body = await req.json();
 
       const { field_name, x_position, y_position, width, height, font_size, field_type, color } = body;
-
       if (
         !field_name ||
         x_position === undefined ||
@@ -43,6 +42,9 @@ export class FieldController {
         return HttpHandler.badRequest('Missing required fields');
       }
 
+      // Ensure color is a valid hex string, default to black if not provided
+      const colorValue = (color && typeof color === 'string' && color.trim()) ? color.trim() : '#000000';
+
       const fieldData: CreateFieldRequest = {
         template_id: templateId,
         field_name,
@@ -52,7 +54,7 @@ export class FieldController {
         height: parseFloat(height),
         font_size: parseFloat(font_size),
         field_type,
-        color: color || '#000000', // Default to black if not provided
+        color: colorValue,
       };
 
       return HttpHandler.handleAsync(
