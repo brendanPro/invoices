@@ -29,6 +29,11 @@ export interface FieldBounds {
   y: number; // top-left Y in pixels
   width: number; // width in pixels
   height: number; // height in pixels
+  field_type?: 'text' | 'number' | 'date'; // Optional field type for pending fields
+  // Preview properties for unsaved fields
+  field_name?: string;
+  font_size?: number;
+  color?: string;
 }
 
 export interface FieldData {
