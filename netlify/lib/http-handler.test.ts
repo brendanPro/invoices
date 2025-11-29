@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { HttpHandler } from '../lib/http-handler';
+import { HttpHandler } from '@netlify/lib/http-handler';
 
 describe('HttpHandler', () => {
   describe('success responses', () => {

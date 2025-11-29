@@ -1,5 +1,5 @@
 import { AuthService } from './auth.service';
-import { HttpHandler } from '../../lib/http-handler';
+import { HttpHandler } from '@netlify/lib/http-handler';
 
 export class AuthController {
   private authService: AuthService;

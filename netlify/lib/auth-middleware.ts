@@ -1,4 +1,4 @@
-import { HttpHandler } from './http-handler';
+import { HttpHandler } from '@netlify/lib/http-handler';
 import jwt from 'jsonwebtoken';
 
 export interface AuthenticatedUser {

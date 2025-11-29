@@ -1,7 +1,9 @@
-import { TemplateController } from './template.controller';
-import { HttpHandler, HttpMethod } from '../../lib/http-handler';
-import { requireAuth } from '../../lib/auth-middleware';
-import fields from './fields/fields.mts';
+import { HttpHandler, HttpMethod } from '@netlify/lib/http-handler';
+import { requireAuth } from '@netlify/lib/auth-middleware';
+import { TemplateModule } from '@netlify/templates/templates.module';
+import fields from '../fields/fields.mts';
+import { FieldService } from '@netlify/fields/field.service';
+import { FieldsRepository } from '@netlify/fields/fields.repository';
 
 export const config = {
   path: [
@@ -12,9 +14,9 @@ export const config = {
     '/api/templates/:template_id/pdf',
   ],
 };
-
 const ALLOWED_METHODS = [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.OPTIONS];
-const templateController = new TemplateController();
+const templateModule = new TemplateModule(new FieldService(new FieldsRepository()));
+const templateController = templateModule.controller;
 
 export default async (req: Request) => {
   const corsResponse = HttpHandler.handleCors(req);
