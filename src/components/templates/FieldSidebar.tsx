@@ -15,6 +15,9 @@ interface FieldSidebarProps {
   onFieldSave: (fieldData: FieldData) => void;
   onFieldCancel: () => void;
   isDrawingMode: boolean;
+  onFieldTypeChange?: (fieldType: 'text' | 'number' | 'date') => void;
+  pendingFieldType?: 'text' | 'number' | 'date';
+  onPreviewChange?: (preview: { field_name?: string; font_size?: number; color?: string }) => void;
 }
 
 export function FieldSidebar({ 
@@ -25,7 +28,10 @@ export function FieldSidebar({
   newField,
   onFieldSave,
   onFieldCancel,
-  isDrawingMode
+  isDrawingMode,
+  onFieldTypeChange,
+  pendingFieldType = 'text',
+  onPreviewChange
 }: FieldSidebarProps) {
   const getFieldTypeColor = (fieldType: string) => {
     switch (fieldType) {
@@ -66,6 +72,9 @@ export function FieldSidebar({
             bounds={newField}
             onSave={onFieldSave}
             onCancel={onFieldCancel}
+            onFieldTypeChange={onFieldTypeChange}
+            defaultFieldType={pendingFieldType}
+            onPreviewChange={onPreviewChange}
           />
         </div>
       )}

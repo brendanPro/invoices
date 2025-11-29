@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ const fieldSchema = z.object({
   field_name: z.string().min(1, 'Field name is required'),
   field_type: z.enum(['text', 'number', 'date']),
   font_size: z.number().min(8).max(72),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color (e.g., #000000)').optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color (e.g., #000000)').default('#000000'),
 });
 
 type FieldFormData = z.infer<typeof fieldSchema>;
@@ -22,9 +22,12 @@ interface FieldFormProps {
   bounds: FieldBounds;
   onSave: (fieldData: FieldData) => void;
   onCancel: () => void;
+  onFieldTypeChange?: (fieldType: 'text' | 'number' | 'date') => void;
+  defaultFieldType?: 'text' | 'number' | 'date';
+  onPreviewChange?: (preview: { field_name?: string; font_size?: number; color?: string }) => void;
 }
 
-export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
+export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, defaultFieldType = 'text', onPreviewChange }: FieldFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -33,11 +36,12 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
     formState: { errors },
     setValue,
     watch,
+    getValues,
   } = useForm<FieldFormData>({
     resolver: zodResolver(fieldSchema),
     defaultValues: {
       field_name: '',
-      field_type: 'text',
+      field_type: defaultFieldType,
       font_size: 12,
       color: '#000000',
     },
@@ -45,20 +49,49 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
 
   const fieldType = watch('field_type');
   const colorValue = watch('color') || '#000000';
+  const fieldName = watch('field_name');
+  const fontSize = watch('font_size');
+
+  // Notify parent of preview changes
+  useEffect(() => {
+    if (onPreviewChange) {
+      onPreviewChange({
+        field_name: fieldName || undefined,
+        font_size: fontSize,
+        color: colorValue || '#000000',
+      });
+    }
+  }, [fieldName, fontSize, colorValue, onPreviewChange]);
+
+  // Handle field type change and notify parent
+  const handleFieldTypeChange = (value: string) => {
+    const newFieldType = value as 'text' | 'number' | 'date';
+    setValue('field_type', newFieldType);
+    if (onFieldTypeChange) {
+      onFieldTypeChange(newFieldType);
+    }
+  };
 
   const handleColorChange = (value: string) => {
     // Normalize hex color (remove # if needed, ensure 6 characters)
     const normalized = value.replace('#', '').toUpperCase();
     if (normalized.length === 6 && /^[0-9A-F]{6}$/.test(normalized)) {
-      setValue('color', `#${normalized}`, { shouldValidate: true });
+      const hexColor = `#${normalized}`;
+      setValue('color', hexColor, { shouldValidate: true });
     } else if (normalized.length <= 6) {
-      setValue('color', value, { shouldValidate: false });
+      // Allow partial input while typing
+      setValue('color', value.startsWith('#') ? value : `#${value}`, { shouldValidate: false });
     }
   };
 
   const onSubmit = async (data: FieldFormData) => {
     try {
       setIsSubmitting(true);
+      
+      // Get color from watched value (always up-to-date)
+      // colorValue comes from watch('color') which tracks the form state
+      // The watched value is always the most current, so use it directly
+      const currentColor = colorValue || '#000000';
       
       const fieldData: FieldData = {
         field_name: data.field_name,
@@ -68,7 +101,7 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
         y_position: bounds.y,
         width: bounds.width,
         height: bounds.height,
-        color: data.color || '#000000',
+        color: currentColor, // Use the current color value
       };
 
       onSave(fieldData);
@@ -104,7 +137,7 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
             <Label htmlFor="field_type">Field Type</Label>
             <Select
               value={fieldType}
-              onValueChange={(value) => setValue('field_type', value as 'text' | 'number' | 'date')}
+              onValueChange={handleFieldTypeChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select field type" />
