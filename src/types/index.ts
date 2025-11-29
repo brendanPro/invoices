@@ -6,6 +6,7 @@ export * from './api';
 
 // Template types
 export * from './template';
+export * from './template-field';
 
 // Invoice types
 export * from './invoice';

@@ -10,26 +10,29 @@ export interface Field {
   width: number;
   height: number;
   field_type: FieldType;
+  color: string;
   created_at: string;
 }
 
-export type CreateFieldRequest = Pick<Field, 
-  'template_id' | 
-  'field_name'  | 
-  'x_position'  | 
-  'y_position'  |
-  'width'       |
-  'height'      |
-  'font_size'   | 
-  'field_type'
+export type CreateFieldRequest = Pick<Field,
+  'template_id' |
+  'field_name' |
+  'x_position' |
+  'y_position' |
+  'width' |
+  'height' |
+  'font_size' |
+  'field_type' |
+  'color'
 >;
 
-export type UpdateFieldRequest = Partial<Pick<Field, 
-  'field_name'  | 
-  'x_position'  | 
-  'y_position'  |
-  'width'       |
-  'height'      |
-  'font_size'   | 
-  'field_type'
+export type UpdateFieldRequest = Partial<Pick<Field,
+  'field_name' |
+  'x_position' |
+  'y_position' |
+  'width' |
+  'height' |
+  'font_size' |
+  'field_type' |
+  'color'
 >>;

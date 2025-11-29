@@ -1,10 +1,10 @@
-import { 
-  integer, 
-  pgTable, 
-  varchar, 
-  text, 
-  timestamp, 
-  decimal, 
+import {
+  integer,
+  pgTable,
+  varchar,
+  text,
+  timestamp,
+  decimal,
   jsonb,
   pgEnum,
   unique,
@@ -39,6 +39,7 @@ export const templateFields = pgTable('template_fields', {
   height: decimal('height', { precision: 10, scale: 2 }).notNull(),
   font_size: decimal('font_size', { precision: 5, scale: 2 }).default('12'),
   field_type: fieldTypeEnum('field_type').default('text'),
+  color: varchar('color', { length: 7 }).default('#000000'), // Hex color format: #000000
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   templateIdIdx: index('idx_template_fields_template_id').on(table.template_id),

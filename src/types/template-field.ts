@@ -8,6 +8,7 @@ export interface TemplateField {
   height: string; // decimal as string
   font_size: string; // decimal as string
   field_type: 'text' | 'number' | 'date';
+  color: string;
   created_at: string;
 }
 
@@ -20,6 +21,7 @@ export interface CreateTemplateFieldRequest {
   height: number;
   font_size: number;
   field_type: 'text' | 'number' | 'date';
+  color?: string;
 }
 
 export interface FieldBounds {
@@ -37,4 +39,5 @@ export interface FieldData {
   y_position: number;
   width: number;
   height: number;
+  color?: string;
 }

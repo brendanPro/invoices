@@ -13,6 +13,7 @@ const fieldSchema = z.object({
   field_name: z.string().min(1, 'Field name is required'),
   field_type: z.enum(['text', 'number', 'date']),
   font_size: z.number().min(8).max(72),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color (e.g., #000000)').optional(),
 });
 
 type FieldFormData = z.infer<typeof fieldSchema>;
@@ -38,10 +39,22 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
       field_name: '',
       field_type: 'text',
       font_size: 12,
+      color: '#000000',
     },
   });
 
   const fieldType = watch('field_type');
+  const colorValue = watch('color') || '#000000';
+
+  const handleColorChange = (value: string) => {
+    // Normalize hex color (remove # if needed, ensure 6 characters)
+    const normalized = value.replace('#', '').toUpperCase();
+    if (normalized.length === 6 && /^[0-9A-F]{6}$/.test(normalized)) {
+      setValue('color', `#${normalized}`, { shouldValidate: true });
+    } else if (normalized.length <= 6) {
+      setValue('color', value, { shouldValidate: false });
+    }
+  };
 
   const onSubmit = async (data: FieldFormData) => {
     try {
@@ -55,6 +68,7 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
         y_position: bounds.y,
         width: bounds.width,
         height: bounds.height,
+        color: data.color || '#000000',
       };
 
       onSave(fieldData);
@@ -119,6 +133,32 @@ export function FieldForm({ bounds, onSave, onCancel }: FieldFormProps) {
             />
             {errors.font_size && (
               <p className="text-sm text-red-500">{errors.font_size.message}</p>
+            )}
+          </div>
+
+          {/* Color Picker */}
+          <div className="space-y-2">
+            <Label htmlFor="color">Text Color</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="color"
+                type="color"
+                value={colorValue}
+                onChange={(e) => handleColorChange(e.target.value)}
+                className="h-10 w-20 cursor-pointer"
+              />
+              <Input
+                type="text"
+                value={colorValue}
+                onChange={(e) => handleColorChange(e.target.value)}
+                placeholder="#000000"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                className="flex-1 font-mono text-sm"
+                maxLength={7}
+              />
+            </div>
+            {errors.color && (
+              <p className="text-sm text-red-500">{errors.color.message}</p>
             )}
           </div>
 

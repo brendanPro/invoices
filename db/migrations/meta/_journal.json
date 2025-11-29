@@ -22,6 +22,13 @@
       "when": 1761755127938,
       "tag": "0002_motionless_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764445947192,
+      "tag": "0003_lonely_princess_powerful",
+      "breakpoints": true
     }
   ]
 }

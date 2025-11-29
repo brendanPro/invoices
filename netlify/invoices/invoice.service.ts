@@ -8,7 +8,7 @@ import type { IInvoiceService, InvoiceWithTemplate } from '@netlify/invoices/IIn
 export class InvoiceService implements IInvoiceService {
   private readonly repository: IInvoicesRepository;
   private readonly templateService: ITemplateService;
-  constructor(repository: IInvoicesRepository, templateService: ITemplateService){
+  constructor(repository: IInvoicesRepository, templateService: ITemplateService) {
     this.repository = repository;
     this.templateService = templateService;
   }
@@ -144,6 +144,24 @@ export class InvoiceService implements IInvoiceService {
     return `invoice_${invoiceId}_${timestamp}_${randomString}.pdf`;
   }
 
+  private hexToRgb(hex: string): { r: number; g: number; b: number } {
+    // Remove # if present and normalize
+    const cleanHex = hex.replace('#', '').toLowerCase();
+
+    // Validate hex format (should be 6 characters)
+    if (cleanHex.length !== 6 || !/^[0-9a-f]{6}$/.test(cleanHex)) {
+      console.warn(`Invalid hex color: ${hex}, defaulting to black`);
+      return { r: 0, g: 0, b: 0 };
+    }
+
+    // Parse hex values (0-255 range, convert to 0-1 range for pdf-lib)
+    const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+    const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+    const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+    return { r, g, b };
+  }
+
   private async generateInvoicePdf(
     templateBlob: ArrayBuffer,
     templateFields: TemplateField[],
@@ -169,12 +187,16 @@ export class InvoiceService implements IInvoiceService {
 
         const pdfY = height - y - fontSize;
 
+        // Use field color or default to black
+        const colorHex = field.color || '#000000';
+        const colorRgb = this.hexToRgb(colorHex);
+
         page.drawText(textValue, {
           x,
           y: pdfY,
           size: fontSize,
           font,
-          color: rgb(0, 0, 0), // Black text
+          color: rgb(colorRgb.r, colorRgb.g, colorRgb.b),
         });
       }
     }

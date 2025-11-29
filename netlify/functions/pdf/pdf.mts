@@ -34,7 +34,7 @@ export default async (req: Request) => {
     }
 
     // Verify template ownership
-    const template = await templatesRepository.getTemplateById(id);
+    const template = await templatesRepository.findById(id);
     if (!template) {
       return HttpHandler.notFound('Template not found or access denied');
     }
