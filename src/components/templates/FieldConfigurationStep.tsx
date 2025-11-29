@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldSidebar } from './FieldSidebar';
 import { InteractivePdfViewer } from './InteractivePdfViewer';
@@ -25,6 +25,7 @@ export function FieldConfigurationStep({
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [newFieldBounds, setNewFieldBounds] = useState<FieldBounds | null>(null);
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
+  const [pendingFieldType, setPendingFieldType] = useState<'text' | 'number' | 'date'>('text');
 
   const { templateId: searchTemplateId } = useSearch({ from: '/templates' });
   const templateId = useMemo(() => {
@@ -41,12 +42,13 @@ export function FieldConfigurationStep({
   const handleAddFieldClick = () => {
     setIsDrawingMode(true);
     setNewFieldBounds(null);
+    setPendingFieldType('text'); // Reset to default
   };
 
-  const handleFieldCreate = (bounds: FieldBounds) => {
-    setNewFieldBounds(bounds);
+  const handleFieldCreate = useCallback((bounds: FieldBounds) => {
+    setNewFieldBounds({ ...bounds, field_type: pendingFieldType });
     setIsDrawingMode(false);
-  };
+  }, [pendingFieldType]);
 
   const handleDrawingComplete = () => {
     setIsDrawingMode(false);
@@ -69,6 +71,7 @@ export function FieldConfigurationStep({
         },
       });
       setNewFieldBounds(null);
+      setPendingFieldType('text'); // Reset to default
     } catch (error) {
       console.error('Failed to save field:', error);
     }
@@ -76,7 +79,29 @@ export function FieldConfigurationStep({
 
   const handleFieldCancel = () => {
     setNewFieldBounds(null);
+    setPendingFieldType('text'); // Reset to default
   };
+
+  const handleFieldTypeChange = useCallback((fieldType: 'text' | 'number' | 'date') => {
+    setPendingFieldType(fieldType);
+    // Update the pending field bounds with the new field type
+    setNewFieldBounds((prev) => {
+      if (prev) {
+        return { ...prev, field_type: fieldType };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handlePreviewChange = useCallback((preview: { field_name?: string; font_size?: number; color?: string }) => {
+    // Update the pending field bounds with preview data
+    setNewFieldBounds((prev) => {
+      if (prev) {
+        return { ...prev, ...preview };
+      }
+      return prev;
+    });
+  }, []);
 
   const handleFieldDelete = async (fieldId: number) => {
     if (!confirm('Are you sure you want to delete this field?')) {
@@ -159,6 +184,9 @@ export function FieldConfigurationStep({
         onFieldSave={handleFieldSave}
         onFieldCancel={handleFieldCancel}
         isDrawingMode={isDrawingMode}
+        onFieldTypeChange={handleFieldTypeChange}
+        pendingFieldType={pendingFieldType}
+        onPreviewChange={handlePreviewChange}
       />
 
       {/* Right - PDF Viewer */}
@@ -167,8 +195,12 @@ export function FieldConfigurationStep({
         templateId={templateId}
         fields={fields}
         isDrawingMode={isDrawingMode}
+        pendingField={newFieldBounds || undefined}
         onFieldCreate={handleFieldCreate}
         onDrawingComplete={handleDrawingComplete}
+        onPendingFieldUpdate={(bounds) => {
+          setNewFieldBounds(bounds);
+        }}
       />
 
       {/* Action Buttons - Fixed at bottom right */}

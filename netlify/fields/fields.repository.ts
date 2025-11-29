@@ -22,6 +22,11 @@ function transformField(drizzleField: any): Field {
 
 export class FieldsRepository implements IFieldsRepository {
   async create(fieldData: CreateFieldRequest): Promise<Field> {
+    // Ensure color is a valid hex string
+    const colorValue = (fieldData.color && typeof fieldData.color === 'string' && fieldData.color.trim())
+      ? fieldData.color.trim()
+      : '#000000';
+
     const result = await db.insert(templateFields)
       .values({
         template_id: fieldData.template_id,
@@ -32,7 +37,7 @@ export class FieldsRepository implements IFieldsRepository {
         height: fieldData.height.toString(),
         font_size: fieldData.font_size.toString(),
         field_type: fieldData.field_type,
-        color: fieldData.color || '#000000',
+        color: colorValue,
       })
       .returning();
 
