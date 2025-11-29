@@ -65,6 +65,7 @@ export function FieldConfigurationStep({
           height: fieldData.height,
           font_size: fieldData.font_size,
           field_type: fieldData.field_type,
+          color: fieldData.color || '#000000',
         },
       });
       setNewFieldBounds(null);

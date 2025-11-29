@@ -36,6 +36,7 @@ export interface CreateTemplateFieldRequest {
   height?: number;
   font_size?: number;
   field_type?: FieldType;
+  color?: string;
 }
 
 export interface CreateTemplateFieldResponse {
@@ -51,6 +52,7 @@ export interface UpdateTemplateFieldRequest {
   y_position?: number;
   font_size?: number;
   field_type?: FieldType;
+  color?: string;
 }
 
 export interface UpdateTemplateFieldResponse {

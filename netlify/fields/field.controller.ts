@@ -29,7 +29,7 @@ export class FieldController {
 
       const body = await req.json();
 
-      const { field_name, x_position, y_position, width, height, font_size, field_type } = body;
+      const { field_name, x_position, y_position, width, height, font_size, field_type, color } = body;
 
       if (
         !field_name ||
@@ -52,6 +52,7 @@ export class FieldController {
         height: parseFloat(height),
         font_size: parseFloat(font_size),
         field_type,
+        color: color || '#000000', // Default to black if not provided
       };
 
       return HttpHandler.handleAsync(
