@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import type { Template } from '@/types/index';
 import { TemplateService } from '@netlify/templates/template.service';
+import type { CreateFieldRequest, Field } from '@types/field';
 
 const mockBlobsService = {
   uploadTemplate: mock<(blobKey: string, arrayBuffer: ArrayBuffer) => Promise<void>>((blobKey: string, arrayBuffer: ArrayBuffer) => Promise.resolve()),
@@ -9,7 +10,7 @@ const mockBlobsService = {
   listTemplates: mock(() => Promise.resolve([])),
 };
 
-mock.module('../../lib/blobs', () => ({
+mock.module('@netlify/lib/blobs', () => ({
   blobs: {
     uploadTemplate: mockBlobsService.uploadTemplate,
     deleteTemplate: mockBlobsService.deleteTemplate,
@@ -26,6 +27,12 @@ const mockTemplatesRepository = {
   exists: mock<(id: number, userEmail?: string) => Promise<boolean>>(() => Promise.resolve(false)),
 };
 
+const mockFieldsService = {
+  createField: mock<(field: CreateFieldRequest) => Promise<Field>>(() => Promise.resolve({} as Field)),
+  findFieldsByTemplateId: mock<(templateId: number) => Promise<Field[]>>(() => Promise.resolve([])),
+  deleteField: mock<(templateId: number, fieldId: number) => Promise<void>>(() => Promise.resolve()),
+};
+
 describe('TemplateService', () => {
   let templateService: TemplateService;
 
@@ -36,8 +43,11 @@ describe('TemplateService', () => {
     for (const key in mockBlobsService) {
       (mockBlobsService as any)[key].mockClear();
     }
+    for (const key in mockFieldsService) {
+      (mockFieldsService as any)[key].mockClear();
+    }
 
-    templateService = new TemplateService(mockTemplatesRepository);
+    templateService = new TemplateService(mockTemplatesRepository, mockFieldsService);
   });
 
   describe('getAllTemplates', () => {
@@ -89,12 +99,12 @@ describe('TemplateService', () => {
       const fileData = 'dGVzdCBwZGYgZGF0YQ==';
       const userEmail = 'test@example.com';
       let generatedBlobKey: string = '';
-      
+
       mockBlobsService.uploadTemplate.mockImplementation((blobKey: string, arrayBuffer: ArrayBuffer) => {
         generatedBlobKey = blobKey;
         return Promise.resolve();
       });
-      
+
       mockTemplatesRepository.create.mockImplementation((name: string, blobKey: string, userEmail: string) => {
         const mockTemplate: Template = {
           id: 1,
@@ -112,14 +122,14 @@ describe('TemplateService', () => {
       // Verify blobKey was generated and matches the pattern
       expect(generatedBlobKey).toBeTruthy();
       expect(generatedBlobKey).toMatch(/^template_\d+_[a-z0-9]+\.pdf$/);
-      
+
       // Verify uploadTemplate was called with the generated blobKey
       expect(mockBlobsService.uploadTemplate).toHaveBeenCalledTimes(1);
       expect(mockBlobsService.uploadTemplate).toHaveBeenCalledWith(
         generatedBlobKey,
         expect.any(ArrayBuffer)
       );
-      
+
       // Verify repository.create was called with the generated blobKey
       expect(mockTemplatesRepository.create).toHaveBeenCalledTimes(1);
       expect(mockTemplatesRepository.create).toHaveBeenCalledWith(
@@ -127,7 +137,7 @@ describe('TemplateService', () => {
         generatedBlobKey,
         userEmail
       );
-      
+
       // Verify the returned template has the same blobKey
       expect(result.blob_key).toBe(generatedBlobKey);
       expect(result.name).toBe(name);
@@ -315,6 +325,78 @@ describe('TemplateService', () => {
         'Failed to retrieve template'
       );
       expect(mockTemplatesRepository.findById).toHaveBeenCalledWith(templateId);
+    });
+  });
+
+  describe('getTemplateByIdWithFields', () => {
+    it('should return template with fields when found', async () => {
+      const templateId = 1;
+      const userEmail = 'test@example.com';
+      const mockTemplate: Template = {
+        id: templateId,
+        name: 'Test Template',
+        blob_key: 'template_1234567890_abc123.pdf',
+        user_email: userEmail,
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
+      const mockFields = [
+        {
+          id: 1,
+          template_id: templateId,
+          field_name: 'Field 1',
+          x_position: 10,
+          y_position: 20,
+          width: 100,
+          height: 30,
+          font_size: 12,
+          field_type: 'text' as const,
+          created_at: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+
+      mockTemplatesRepository.findById.mockResolvedValue(mockTemplate);
+      mockFieldsService.findFieldsByTemplateId.mockResolvedValue(mockFields);
+
+      const result = await templateService.getTemplateByIdWithFields(templateId, userEmail);
+
+      expect(result).toEqual({ ...mockTemplate, fields: mockFields });
+      expect(mockTemplatesRepository.findById).toHaveBeenCalledWith(templateId);
+      expect(mockFieldsService.findFieldsByTemplateId).toHaveBeenCalledWith(templateId);
+    });
+
+    it('should throw error when template is not found', async () => {
+      const templateId = 999;
+      const userEmail = 'test@example.com';
+
+      mockTemplatesRepository.findById.mockResolvedValue(null);
+
+      await expect(templateService.getTemplateByIdWithFields(templateId, userEmail)).rejects.toThrow(
+        'Template not found'
+      );
+      expect(mockTemplatesRepository.findById).toHaveBeenCalledWith(templateId);
+      expect(mockFieldsService.findFieldsByTemplateId).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when template user email does not match', async () => {
+      const templateId = 1;
+      const userEmail = 'test@example.com';
+      const mockTemplate: Template = {
+        id: templateId,
+        name: 'Test Template',
+        blob_key: 'template_1234567890_abc123.pdf',
+        user_email: 'other@example.com', // Different user
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z',
+      };
+
+      mockTemplatesRepository.findById.mockResolvedValue(mockTemplate);
+
+      await expect(templateService.getTemplateByIdWithFields(templateId, userEmail)).rejects.toThrow(
+        'Template not found'
+      );
+      expect(mockTemplatesRepository.findById).toHaveBeenCalledWith(templateId);
+      expect(mockFieldsService.findFieldsByTemplateId).not.toHaveBeenCalled();
     });
   });
 
