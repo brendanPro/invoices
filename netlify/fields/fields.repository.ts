@@ -85,6 +85,8 @@ export class FieldsRepository implements IFieldsRepository {
     if (fieldData.field_name !== undefined) updateData.field_name = fieldData.field_name;
     if (fieldData.x_position !== undefined) updateData.x_position = fieldData.x_position.toString();
     if (fieldData.y_position !== undefined) updateData.y_position = fieldData.y_position.toString();
+    if (fieldData.width !== undefined) updateData.width = fieldData.width.toString();
+    if (fieldData.height !== undefined) updateData.height = fieldData.height.toString();
     if (fieldData.font_size !== undefined) updateData.font_size = fieldData.font_size.toString();
     if (fieldData.field_type !== undefined) updateData.field_type = fieldData.field_type;
     if (fieldData.color !== undefined) updateData.color = fieldData.color;
