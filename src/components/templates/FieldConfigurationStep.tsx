@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldSidebar } from './FieldSidebar';
 import { InteractivePdfViewer } from './InteractivePdfViewer';
 import {
   useTemplateFields,
   useCreateTemplateField,
+  useUpdateTemplateField,
   useDeleteTemplateField,
 } from '@/hooks/useTemplateFields';
 import type { Template } from '@/types/index';
@@ -35,13 +36,15 @@ export function FieldConfigurationStep({
   }, [template?.id, searchTemplateId]);
 
   // React Query hooks
-  const { data: fields = [], isLoading, error } = useTemplateFields(templateId);
+  const { data: fields = [], isLoading, error, refetch: refetchFields } = useTemplateFields(templateId);
   const createFieldMutation = useCreateTemplateField();
+  const updateFieldMutation = useUpdateTemplateField();
   const deleteFieldMutation = useDeleteTemplateField();
 
   const handleAddFieldClick = () => {
     setIsDrawingMode(true);
     setNewFieldBounds(null);
+    setSelectedField(null); // Clear any selected field when creating new
     setPendingFieldType('text'); // Reset to default
   };
 
@@ -80,6 +83,7 @@ export function FieldConfigurationStep({
   const handleFieldCancel = () => {
     setNewFieldBounds(null);
     setPendingFieldType('text'); // Reset to default
+    // Don't clear selectedField here - that's handled by onEditCancel
   };
 
   const handleFieldTypeChange = useCallback((fieldType: 'text' | 'number' | 'date') => {
@@ -93,6 +97,9 @@ export function FieldConfigurationStep({
     });
   }, []);
 
+  // Store preview state separately to avoid updating selectedField during preview
+  const [previewState, setPreviewState] = useState<{ field_name?: string; font_size?: number; color?: string } | null>(null);
+  
   const handlePreviewChange = useCallback((preview: { field_name?: string; font_size?: number; color?: string }) => {
     // Update the pending field bounds with preview data
     setNewFieldBounds((prev) => {
@@ -101,6 +108,9 @@ export function FieldConfigurationStep({
       }
       return prev;
     });
+    
+    // Store preview state separately (for selected field preview)
+    setPreviewState(preview);
   }, []);
 
   const handleFieldDelete = async (fieldId: number) => {
@@ -120,7 +130,84 @@ export function FieldConfigurationStep({
 
   const handleFieldSelect = (field: TemplateField) => {
     setSelectedField(field);
+    // Clear new field creation when selecting an existing field for editing
+    setNewFieldBounds(null);
+    setIsDrawingMode(false);
   };
+
+  const handleFieldUpdate = async (fieldData: FieldData) => {
+    if (!selectedField) return;
+    
+    try {
+      await updateFieldMutation.mutateAsync({
+        templateId,
+        fieldId: selectedField.id,
+        fieldData: {
+          field_name: fieldData.field_name,
+          x_position: fieldData.x_position,
+          y_position: fieldData.y_position,
+          width: fieldData.width,
+          height: fieldData.height,
+          font_size: fieldData.font_size,
+          field_type: fieldData.field_type,
+          color: fieldData.color || '#000000',
+        },
+      });
+      
+      // Wait for fields to refetch before clearing selection
+      // The mutation's onSuccess already triggers refetch, so wait a bit for it to complete
+      await refetchFields();
+      
+      // Clear selection after fields have been refetched
+      setSelectedField(null);
+    } catch (error) {
+      console.error('Failed to update field:', error);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setSelectedField(null);
+  };
+
+  // Memoize initial values for the form (based on selectedField values)
+  // This prevents the form from resetting when preview state changes
+  // The values only change when we select a different field, not during preview updates
+  const fieldFormInitialValues = useMemo(() => {
+    if (!selectedField) return undefined;
+    return {
+      field_name: selectedField.field_name,
+      field_type: selectedField.field_type,
+      font_size: parseFloat(selectedField.font_size),
+      color: selectedField.color || '#000000',
+    };
+  }, [
+    selectedField?.id, // Field ID
+    selectedField?.field_name, // Field name from database
+    selectedField?.field_type, // Field type from database
+    selectedField?.font_size, // Font size from database
+    selectedField?.color, // Color from database
+  ]); // Only recalculate when actual field data changes (not preview)
+
+  // Convert selected field to FieldBounds for editing, merging with preview state
+  const editingFieldBounds: FieldBounds | null = useMemo(() => {
+    if (!selectedField) return null;
+    
+    return {
+      x: parseFloat(selectedField.x_position),
+      y: parseFloat(selectedField.y_position),
+      width: parseFloat(selectedField.width),
+      height: parseFloat(selectedField.height),
+      field_type: selectedField.field_type,
+      field_name: previewState?.field_name !== undefined ? previewState.field_name : selectedField.field_name,
+      font_size: previewState?.font_size !== undefined ? previewState.font_size : parseFloat(selectedField.font_size),
+      color: previewState?.color !== undefined ? previewState.color : (selectedField.color || '#000000'),
+    };
+  }, [selectedField, previewState]);
+  
+  // Clear preview state when field selection changes
+  useEffect(() => {
+    setPreviewState(null);
+  }, [selectedField?.id]); // Clear when selecting a different field or clearing selection
 
   if (!templateId) {
     return (
@@ -173,7 +260,7 @@ export function FieldConfigurationStep({
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       {/* Left Sidebar */}
       <FieldSidebar
         fields={fields}
@@ -181,8 +268,13 @@ export function FieldConfigurationStep({
         onFieldDelete={handleFieldDelete}
         onFieldSelect={handleFieldSelect}
         newField={newFieldBounds || undefined}
+        editingField={editingFieldBounds || undefined}
+        selectedField={selectedField || undefined}
+        fieldFormInitialValues={fieldFormInitialValues}
         onFieldSave={handleFieldSave}
+        onFieldUpdate={handleFieldUpdate}
         onFieldCancel={handleFieldCancel}
+        onEditCancel={handleEditCancel}
         isDrawingMode={isDrawingMode}
         onFieldTypeChange={handleFieldTypeChange}
         pendingFieldType={pendingFieldType}
@@ -196,10 +288,24 @@ export function FieldConfigurationStep({
         fields={fields}
         isDrawingMode={isDrawingMode}
         pendingField={newFieldBounds || undefined}
+        selectedFieldId={selectedField?.id}
+        selectedField={selectedField || undefined}
         onFieldCreate={handleFieldCreate}
         onDrawingComplete={handleDrawingComplete}
         onPendingFieldUpdate={(bounds) => {
           setNewFieldBounds(bounds);
+        }}
+        onSelectedFieldUpdate={(bounds) => {
+          if (selectedField) {
+            // Update the selectedField state with new bounds
+            setSelectedField({
+              ...selectedField,
+              x_position: bounds.x.toString(),
+              y_position: bounds.y.toString(),
+              width: bounds.width.toString(),
+              height: bounds.height.toString(),
+            });
+          }
         }}
       />
 

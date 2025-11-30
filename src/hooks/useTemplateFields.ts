@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { TemplateField, CreateTemplateFieldRequest } from '@/types/template-field';
+import type { TemplateField, CreateTemplateFieldRequest, FieldData } from '@/types/template-field';
 import { API_ENDPOINTS, authenticatedFetch } from '@/lib/api';
 
 interface ApiResponse<T> {
@@ -43,6 +43,32 @@ async function createTemplateField(
     return result.data;
   } else {
     throw new Error(result.error || 'Failed to create field');
+  }
+}
+
+async function updateTemplateField(
+  templateId: number,
+  fieldId: number,
+  fieldData: FieldData,
+): Promise<TemplateField> {
+  const response = await authenticatedFetch(
+    `${API_ENDPOINTS.FIELDS(templateId)}/${fieldId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(fieldData),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to update field: ${response.statusText}`);
+  }
+
+  const result: ApiResponse<TemplateField> = await response.json();
+
+  if (result.success && result.data) {
+    return result.data;
+  } else {
+    throw new Error(result.error || 'Failed to update field');
   }
 }
 
@@ -96,6 +122,32 @@ export function useCreateTemplateField() {
     },
     onError: (error) => {
       console.error('Template field creation failed:', error);
+    },
+  });
+}
+
+export function useUpdateTemplateField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      templateId,
+      fieldId,
+      fieldData,
+    }: {
+      templateId: number;
+      fieldId: number;
+      fieldData: FieldData;
+    }) => updateTemplateField(templateId, fieldId, fieldData),
+    onSuccess: async (_, { templateId }) => {
+      // Refetch template fields immediately after successful update
+      await queryClient.refetchQueries({
+        queryKey: ['template-fields', templateId],
+        exact: false,
+      });
+    },
+    onError: (error) => {
+      console.error('Template field update failed:', error);
     },
   });
 }
