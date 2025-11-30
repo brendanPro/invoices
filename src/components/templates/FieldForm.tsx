@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,9 +25,16 @@ interface FieldFormProps {
   onFieldTypeChange?: (fieldType: 'text' | 'number' | 'date') => void;
   defaultFieldType?: 'text' | 'number' | 'date';
   onPreviewChange?: (preview: { field_name?: string; font_size?: number; color?: string }) => void;
+  initialValues?: {
+    field_name?: string;
+    field_type?: 'text' | 'number' | 'date';
+    font_size?: number;
+    color?: string;
+  };
+  isEditMode?: boolean;
 }
 
-export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, defaultFieldType = 'text', onPreviewChange }: FieldFormProps) {
+export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, defaultFieldType = 'text', onPreviewChange, initialValues, isEditMode = false }: FieldFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -37,31 +44,69 @@ export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, default
     setValue,
     watch,
     getValues,
+    reset,
   } = useForm<FieldFormData>({
     resolver: zodResolver(fieldSchema),
     defaultValues: {
-      field_name: '',
-      field_type: defaultFieldType,
-      font_size: 12,
-      color: '#000000',
+      field_name: initialValues?.field_name || '',
+      field_type: initialValues?.field_type || defaultFieldType,
+      font_size: initialValues?.font_size || 12,
+      color: initialValues?.color || '#000000',
     },
   });
+
+  // Track previous initial values to only reset when they actually change (not just reference)
+  const previousInitialValuesRef = useRef<string | undefined>(undefined);
+  
+  // Update form when initialValues change (for edit mode)
+  // Only reset when initial values actually change (different field or different values)
+  useEffect(() => {
+    if (initialValues && isEditMode) {
+      // Create a stable key from the values
+      const currentKey = JSON.stringify({
+        name: initialValues.field_name,
+        type: initialValues.field_type,
+        fontSize: initialValues.font_size,
+        color: initialValues.color,
+      });
+      
+      // Only reset if the values actually changed (different field or different values)
+      if (currentKey !== previousInitialValuesRef.current) {
+        previousInitialValuesRef.current = currentKey;
+        reset({
+          field_name: initialValues.field_name || '',
+          field_type: initialValues.field_type || defaultFieldType,
+          font_size: initialValues.font_size || 12,
+          color: initialValues.color || '#000000',
+        });
+      }
+    } else if (!initialValues) {
+      // Clear previous values when not in edit mode
+      previousInitialValuesRef.current = undefined;
+    }
+  }, [initialValues, defaultFieldType, reset, isEditMode]);
 
   const fieldType = watch('field_type');
   const colorValue = watch('color') || '#000000';
   const fieldName = watch('field_name');
   const fontSize = watch('font_size');
 
+  // Store the latest callback in a ref to avoid dependency issues
+  const onPreviewChangeRef = useRef(onPreviewChange);
+  useEffect(() => {
+    onPreviewChangeRef.current = onPreviewChange;
+  }, [onPreviewChange]);
+
   // Notify parent of preview changes
   useEffect(() => {
-    if (onPreviewChange) {
-      onPreviewChange({
+    if (onPreviewChangeRef.current) {
+      onPreviewChangeRef.current({
         field_name: fieldName || undefined,
         font_size: fontSize,
         color: colorValue || '#000000',
       });
     }
-  }, [fieldName, fontSize, colorValue, onPreviewChange]);
+  }, [fieldName, fontSize, colorValue]);
 
   // Handle field type change and notify parent
   const handleFieldTypeChange = (value: string) => {
@@ -115,7 +160,7 @@ export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, default
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Configure Field</CardTitle>
+        <CardTitle>{isEditMode ? 'Edit Field' : 'Configure Field'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -221,7 +266,7 @@ export function FieldForm({ bounds, onSave, onCancel, onFieldTypeChange, default
               disabled={isSubmitting}
               className="flex-1"
             >
-              {isSubmitting ? 'Saving...' : 'Save Field'}
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Update Field' : 'Save Field'}
             </Button>
           </div>
         </form>

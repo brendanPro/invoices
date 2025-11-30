@@ -17,9 +17,12 @@ interface InteractivePdfViewerProps {
   fields: TemplateField[];
   isDrawingMode: boolean;
   pendingField?: FieldBounds;
+  selectedFieldId?: number; // ID of the field being edited
+  selectedField?: TemplateField; // Full field object for editing
   onFieldCreate: (bounds: FieldBounds) => void;
   onDrawingComplete: () => void;
   onPendingFieldUpdate?: (bounds: FieldBounds) => void;
+  onSelectedFieldUpdate?: (bounds: FieldBounds) => void; // Callback to update selected field bounds
 }
 
 export function InteractivePdfViewer({
@@ -27,9 +30,12 @@ export function InteractivePdfViewer({
   fields,
   isDrawingMode,
   pendingField,
+  selectedFieldId,
+  selectedField,
   onFieldCreate,
   onDrawingComplete,
   onPendingFieldUpdate,
+  onSelectedFieldUpdate,
 }: InteractivePdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
@@ -49,12 +55,14 @@ export function InteractivePdfViewer({
     startX: number;
     startY: number;
     startBounds: FieldBounds;
+    isPending: boolean; // true for pending field, false for selected field
   }>(null);
 
   const [dragging, setDragging] = useState<null | {
     startX: number;
     startY: number;
     startBounds: FieldBounds;
+    isPending: boolean; // true for pending field, false for selected field
   }>(null);
 
   const { user } = useAuth();
@@ -123,6 +131,21 @@ export function InteractivePdfViewer({
     height: Number(f.height) * scale,
   });
 
+  // Convert selected field to FieldBounds for editing
+  const selectedFieldBounds: FieldBounds | null = useMemo(() => {
+    if (!selectedField) return null;
+    return {
+      x: parseFloat(selectedField.x_position),
+      y: parseFloat(selectedField.y_position),
+      width: parseFloat(selectedField.width),
+      height: parseFloat(selectedField.height),
+      field_type: selectedField.field_type,
+      field_name: selectedField.field_name,
+      font_size: parseFloat(selectedField.font_size),
+      color: selectedField.color || '#000000',
+    };
+  }, [selectedField]);
+
   // Get field type colors
   const getFieldTypeColors = (fieldType?: 'text' | 'number' | 'date') => {
     switch (fieldType) {
@@ -154,10 +177,10 @@ export function InteractivePdfViewer({
   };
 
   const handleMouseDown = (e: any) => {
-    // Check if clicking on a resize handle
-    if (e.target.name()?.startsWith('resize-handle-') && pendingField) {
+    // Check if clicking on a resize handle for pending field
+    if (e.target.name()?.startsWith('resize-handle-pending-') && pendingField) {
       e.cancelBubble = true;
-      const handle = e.target.name().replace('resize-handle-', '') as 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r';
+      const handle = e.target.name().replace('resize-handle-pending-', '') as 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r';
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
       setResizing({
@@ -165,6 +188,23 @@ export function InteractivePdfViewer({
         startX: pos.x,
         startY: pos.y,
         startBounds: pendingField,
+        isPending: true,
+      });
+      return;
+    }
+
+    // Check if clicking on a resize handle for selected field
+    if (e.target.name()?.startsWith('resize-handle-selected-') && selectedFieldBounds) {
+      e.cancelBubble = true;
+      const handle = e.target.name().replace('resize-handle-selected-', '') as 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r';
+      const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+      setResizing({
+        handle,
+        startX: pos.x,
+        startY: pos.y,
+        startBounds: selectedFieldBounds,
+        isPending: false,
       });
       return;
     }
@@ -178,20 +218,35 @@ export function InteractivePdfViewer({
         startX: pos.x,
         startY: pos.y,
         startBounds: pendingField,
+        isPending: true,
       });
       return;
     }
 
-    // Don't start drawing if we're resizing or if there's a pending field
-    if (!isDrawingMode || pendingField) return;
+    // Check if clicking on the selected field rectangle itself (for dragging)
+    if (e.target.name() === 'selected-field-rect' && selectedFieldBounds) {
+      e.cancelBubble = true;
+      const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+      setDragging({
+        startX: pos.x,
+        startY: pos.y,
+        startBounds: selectedFieldBounds,
+        isPending: false,
+      });
+      return;
+    }
+
+    // Don't start drawing if we're resizing, dragging, or if there's a pending/selected field
+    if (!isDrawingMode || pendingField || selectedFieldBounds) return;
     const pos = e.target.getStage().getPointerPosition();
     if (!pos) return;
     setDrawing({ startX: pos.x, startY: pos.y, x: pos.x, y: pos.y, w: 0, h: 0 });
   };
 
   const handleMouseMove = (e: any) => {
-    // Handle dragging the field
-    if (dragging && pendingField && onPendingFieldUpdate) {
+    // Handle dragging the pending field
+    if (dragging && dragging.isPending && pendingField && onPendingFieldUpdate) {
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
 
@@ -200,22 +255,40 @@ export function InteractivePdfViewer({
       const start = dragging.startBounds;
 
       const newBounds: FieldBounds = {
+        ...start,
         x: Math.max(0, start.x + deltaX),
         y: Math.max(0, start.y + deltaY),
         width: start.width,
         height: start.height,
-        field_type: start.field_type,
-        field_name: start.field_name,
-        font_size: start.font_size,
-        color: start.color,
       };
 
       onPendingFieldUpdate(newBounds);
       return;
     }
 
-    // Handle resizing
-    if (resizing && pendingField) {
+    // Handle dragging the selected field
+    if (dragging && !dragging.isPending && selectedFieldBounds && onSelectedFieldUpdate) {
+      const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
+      const deltaX = (pos.x - dragging.startX) / scale;
+      const deltaY = (pos.y - dragging.startY) / scale;
+      const start = dragging.startBounds;
+
+      const newBounds: FieldBounds = {
+        ...start,
+        x: Math.max(0, start.x + deltaX),
+        y: Math.max(0, start.y + deltaY),
+        width: start.width,
+        height: start.height,
+      };
+
+      onSelectedFieldUpdate(newBounds);
+      return;
+    }
+
+    // Handle resizing pending field
+    if (resizing && resizing.isPending && pendingField) {
       const pos = e.target.getStage().getPointerPosition();
       if (!pos || !onPendingFieldUpdate) return;
 
@@ -307,6 +380,99 @@ export function InteractivePdfViewer({
       return;
     }
 
+    // Handle resizing selected field
+    if (resizing && !resizing.isPending && selectedFieldBounds && onSelectedFieldUpdate) {
+      const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
+      const deltaX = (pos.x - resizing.startX) / scale;
+      const deltaY = (pos.y - resizing.startY) / scale;
+      const start = resizing.startBounds;
+
+      let newBounds: FieldBounds = { ...start };
+
+      switch (resizing.handle) {
+        case 'tl': // Top-left: adjust x, y, width, height
+          newBounds = {
+            ...start,
+            x: start.x + deltaX,
+            y: start.y + deltaY,
+            width: start.width - deltaX,
+            height: start.height - deltaY,
+          };
+          break;
+        case 'tr': // Top-right: adjust y, width, height
+          newBounds = {
+            ...start,
+            x: start.x,
+            y: start.y + deltaY,
+            width: start.width + deltaX,
+            height: start.height - deltaY,
+          };
+          break;
+        case 'bl': // Bottom-left: adjust x, width, height
+          newBounds = {
+            ...start,
+            x: start.x + deltaX,
+            y: start.y,
+            width: start.width - deltaX,
+            height: start.height + deltaY,
+          };
+          break;
+        case 'br': // Bottom-right: adjust width, height
+          newBounds = {
+            ...start,
+            x: start.x,
+            y: start.y,
+            width: start.width + deltaX,
+            height: start.height + deltaY,
+          };
+          break;
+        case 't': // Top: adjust y and height only
+          newBounds = {
+            ...start,
+            x: start.x,
+            y: start.y + deltaY,
+            width: start.width,
+            height: start.height - deltaY,
+          };
+          break;
+        case 'b': // Bottom: adjust height only
+          newBounds = {
+            ...start,
+            x: start.x,
+            y: start.y,
+            width: start.width,
+            height: start.height + deltaY,
+          };
+          break;
+        case 'l': // Left: adjust x and width only
+          newBounds = {
+            ...start,
+            x: start.x + deltaX,
+            y: start.y,
+            width: start.width - deltaX,
+            height: start.height,
+          };
+          break;
+        case 'r': // Right: adjust width only
+          newBounds = {
+            ...start,
+            x: start.x,
+            y: start.y,
+            width: start.width + deltaX,
+            height: start.height,
+          };
+          break;
+      }
+
+      // Ensure minimum size
+      if (newBounds.width > 10 && newBounds.height > 10 && newBounds.x >= 0 && newBounds.y >= 0) {
+        onSelectedFieldUpdate(newBounds);
+      }
+      return;
+    }
+
     if (!isDrawingMode || !drawing) return;
     const pos = e.target.getStage().getPointerPosition();
     if (!pos) return;
@@ -378,29 +544,31 @@ export function InteractivePdfViewer({
                   />
                 )}
 
-                {fields.map((f) => {
+                {/* Render all fields except the selected one (it will be rendered separately with edit controls) */}
+                {fields.filter(f => f.id !== selectedFieldId).map((f) => {
                   const r = toStageRect(f);
+                  
+                  const baseFill = f.field_type === 'text'
+                    ? 'rgba(59,130,246,0.3)'
+                    : f.field_type === 'number'
+                      ? 'rgba(34,197,94,0.3)'
+                      : 'rgba(249,115,22,0.3)';
+                  
+                  const baseStroke = f.field_type === 'text'
+                    ? '#3b82f6'
+                    : f.field_type === 'number'
+                      ? '#22c55e'
+                      : '#f97316';
+
                   return (
                     <Rect
-                      key={`${f.id}`}
+                      key={`field-${f.id}-${f.x_position}-${f.y_position}-${f.width}-${f.height}-${f.field_type}-${f.color}`}
                       x={r.x}
                       y={r.y}
                       width={r.width}
                       height={r.height}
-                      fill={
-                        f.field_type === 'text'
-                          ? 'rgba(59,130,246,0.3)'
-                          : f.field_type === 'number'
-                            ? 'rgba(34,197,94,0.3)'
-                            : 'rgba(249,115,22,0.3)'
-                      }
-                      stroke={
-                        f.field_type === 'text'
-                          ? '#3b82f6'
-                          : f.field_type === 'number'
-                            ? '#22c55e'
-                            : '#f97316'
-                      }
+                      fill={baseFill}
+                      stroke={baseStroke}
                       strokeWidth={2}
                     />
                   );
@@ -460,7 +628,7 @@ export function InteractivePdfViewer({
                         listening={true}
                         onMouseEnter={(e) => {
                           // Only show move cursor if not over a handle
-                          if (!e.target.name()?.startsWith('resize-handle-')) {
+                          if (!e.target.name()?.startsWith('resize-handle-pending-')) {
                             const container = e.target.getStage()?.container();
                             if (container) container.style.cursor = 'move';
                           }
@@ -510,7 +678,7 @@ export function InteractivePdfViewer({
                       })()}
                       {/* Resize handles at corners */}
                       <Circle
-                        name="resize-handle-tl"
+                        name="resize-handle-pending-tl"
                         x={rectX}
                         y={rectY}
                         radius={handleSize}
@@ -530,7 +698,7 @@ export function InteractivePdfViewer({
                         }}
                       />
                       <Circle
-                        name="resize-handle-tr"
+                        name="resize-handle-pending-tr"
                         x={rectX + rectW}
                         y={rectY}
                         radius={handleSize}
@@ -550,7 +718,7 @@ export function InteractivePdfViewer({
                         }}
                       />
                       <Circle
-                        name="resize-handle-bl"
+                        name="resize-handle-pending-bl"
                         x={rectX}
                         y={rectY + rectH}
                         radius={handleSize}
@@ -570,7 +738,7 @@ export function InteractivePdfViewer({
                         }}
                       />
                       <Circle
-                        name="resize-handle-br"
+                        name="resize-handle-pending-br"
                         x={rectX + rectW}
                         y={rectY + rectH}
                         radius={handleSize}
@@ -592,7 +760,7 @@ export function InteractivePdfViewer({
                       {/* Side resize handles */}
                       {/* Top handle */}
                       <Rect
-                        name="resize-handle-t"
+                        name="resize-handle-pending-t"
                         x={rectX + rectW / 2 - sideHandleLength / 2}
                         y={rectY - sideHandleThickness / 2}
                         width={sideHandleLength}
@@ -613,7 +781,7 @@ export function InteractivePdfViewer({
                       />
                       {/* Bottom handle */}
                       <Rect
-                        name="resize-handle-b"
+                        name="resize-handle-pending-b"
                         x={rectX + rectW / 2 - sideHandleLength / 2}
                         y={rectY + rectH - sideHandleThickness / 2}
                         width={sideHandleLength}
@@ -634,7 +802,7 @@ export function InteractivePdfViewer({
                       />
                       {/* Left handle */}
                       <Rect
-                        name="resize-handle-l"
+                        name="resize-handle-pending-l"
                         x={rectX - sideHandleThickness / 2}
                         y={rectY + rectH / 2 - sideHandleLength / 2}
                         width={sideHandleThickness}
@@ -655,12 +823,254 @@ export function InteractivePdfViewer({
                       />
                       {/* Right handle */}
                       <Rect
-                        name="resize-handle-r"
+                        name="resize-handle-pending-r"
                         x={rectX + rectW - sideHandleThickness / 2}
                         y={rectY + rectH / 2 - sideHandleLength / 2}
                         width={sideHandleThickness}
                         height={sideHandleLength}
                         fill={colors.stroke}
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                        draggable={false}
+                        listening={true}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'ew-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                    </>
+                  );
+                })()}
+
+                {/* Selected field rectangle (when editing an existing field) */}
+                {selectedFieldBounds && !pendingField && (() => {
+                  const fieldType = selectedFieldBounds.field_type || 'text';
+                  const colors = getFieldTypeColors(fieldType);
+                  const rectX = selectedFieldBounds.x * scale;
+                  const rectY = selectedFieldBounds.y * scale;
+                  const rectW = selectedFieldBounds.width * scale;
+                  const rectH = selectedFieldBounds.height * scale;
+                  const handleSize = 8;
+                  const sideHandleLength = 20;
+                  const sideHandleThickness = 6;
+
+                  return (
+                    <>
+                      <Rect
+                        name="selected-field-rect"
+                        x={rectX}
+                        y={rectY}
+                        width={rectW}
+                        height={rectH}
+                        fill={colors.fill}
+                        stroke="#eab308"
+                        strokeWidth={4}
+                        dash={[8, 4]}
+                        shadowBlur={8}
+                        shadowColor="rgba(234,179,8,0.6)"
+                        listening={true}
+                        onMouseEnter={(e) => {
+                          if (!e.target.name()?.startsWith('resize-handle-selected-')) {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'move';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container && !dragging && !resizing) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Text
+                        x={rectX}
+                        y={rectY - 20}
+                        text="Editing Field"
+                        fontSize={12}
+                        fontStyle="bold"
+                        fill="#eab308"
+                        padding={4}
+                        backgroundColor="rgba(255, 255, 255, 0.9)"
+                      />
+                      {/* Preview text inside the field */}
+                      {(() => {
+                        const previewText = selectedFieldBounds.field_name || 'Preview';
+                        const previewFontSizePx = selectedFieldBounds.font_size || 12;
+                        const previewFontSize = previewFontSizePx * scale;
+                        const previewColor = selectedFieldBounds.color || '#000000';
+                        
+                        const previewX = rectX + 4;
+                        const previewY = rectY + 4;
+                        const textWidth = Math.max(0, rectW - 8);
+
+                        return (
+                          <Text
+                            key={`selected-preview-${selectedFieldId}-${selectedFieldBounds.width}-${selectedFieldBounds.height}-${previewFontSize}-${previewText}`}
+                            x={previewX}
+                            y={previewY}
+                            text={previewText}
+                            fontSize={previewFontSize}
+                            fill={previewColor}
+                            fontFamily="Helvetica"
+                            listening={false}
+                            width={textWidth}
+                            ellipsis={true}
+                            align="left"
+                            wrap="word"
+                          />
+                        );
+                      })()}
+                      {/* Resize handles at corners */}
+                      <Circle
+                        name="resize-handle-selected-tl"
+                        x={rectX}
+                        y={rectY}
+                        radius={handleSize}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        draggable={false}
+                        listening={true}
+                        hitStrokeWidth={15}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'nwse-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Circle
+                        name="resize-handle-selected-tr"
+                        x={rectX + rectW}
+                        y={rectY}
+                        radius={handleSize}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        draggable={false}
+                        listening={true}
+                        hitStrokeWidth={15}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'nesw-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Circle
+                        name="resize-handle-selected-bl"
+                        x={rectX}
+                        y={rectY + rectH}
+                        radius={handleSize}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        draggable={false}
+                        listening={true}
+                        hitStrokeWidth={15}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'nesw-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Circle
+                        name="resize-handle-selected-br"
+                        x={rectX + rectW}
+                        y={rectY + rectH}
+                        radius={handleSize}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        draggable={false}
+                        listening={true}
+                        hitStrokeWidth={15}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'nwse-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      {/* Side resize handles */}
+                      <Rect
+                        name="resize-handle-selected-t"
+                        x={rectX + rectW / 2 - sideHandleLength / 2}
+                        y={rectY - sideHandleThickness / 2}
+                        width={sideHandleLength}
+                        height={sideHandleThickness}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                        draggable={false}
+                        listening={true}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'ns-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Rect
+                        name="resize-handle-selected-b"
+                        x={rectX + rectW / 2 - sideHandleLength / 2}
+                        y={rectY + rectH - sideHandleThickness / 2}
+                        width={sideHandleLength}
+                        height={sideHandleThickness}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                        draggable={false}
+                        listening={true}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'ns-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Rect
+                        name="resize-handle-selected-l"
+                        x={rectX - sideHandleThickness / 2}
+                        y={rectY + rectH / 2 - sideHandleLength / 2}
+                        width={sideHandleThickness}
+                        height={sideHandleLength}
+                        fill="#eab308"
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                        draggable={false}
+                        listening={true}
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'ew-resize';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Rect
+                        name="resize-handle-selected-r"
+                        x={rectX + rectW - sideHandleThickness / 2}
+                        y={rectY + rectH / 2 - sideHandleLength / 2}
+                        width={sideHandleThickness}
+                        height={sideHandleLength}
+                        fill="#eab308"
                         stroke="#ffffff"
                         strokeWidth={1}
                         draggable={false}
