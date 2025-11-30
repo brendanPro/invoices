@@ -19,6 +19,7 @@ const templateModule = new TemplateModule(new FieldService(new FieldsRepository(
 const templateController = templateModule.controller;
 
 export default async (req: Request) => {
+  if (await shouldForwardToFields(req)) return await fields(req);
   const corsResponse = HttpHandler.handleCors(req);
   if (corsResponse) return corsResponse;
   const methodError = HttpHandler.validateMethod(req, ALLOWED_METHODS);
@@ -29,7 +30,6 @@ export default async (req: Request) => {
   }
   const userEmail = authResult.user!.email;
 
-  if (await shouldForwardToFields(req, userEmail)) return await fields(req);
   try {
     switch (req.method) {
       case HttpMethod.GET:
@@ -53,9 +53,8 @@ export default async (req: Request) => {
   }
 };
 
-const shouldForwardToFields = async (req: Request, userEmail: string) => {
+const shouldForwardToFields = async (req: Request) => {
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/');
-  const templateExists = await templateController.isTemplateExists(req, userEmail);
-  return pathParts[4] === 'fields' && templateExists;
+  return pathParts[4] === 'fields';
 };

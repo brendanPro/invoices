@@ -12,8 +12,18 @@ interface FieldSidebarProps {
   onFieldDelete: (fieldId: number) => void;
   onFieldSelect: (field: TemplateField) => void;
   newField?: FieldBounds; // Field being created
+  editingField?: FieldBounds; // Field being edited
+  selectedField?: TemplateField; // Currently selected field for editing
+  fieldFormInitialValues?: { // Memoized initial values for the form
+    field_name?: string;
+    field_type?: 'text' | 'number' | 'date';
+    font_size?: number;
+    color?: string;
+  };
   onFieldSave: (fieldData: FieldData) => void;
+  onFieldUpdate?: (fieldData: FieldData) => void;
   onFieldCancel: () => void;
+  onEditCancel?: () => void;
   isDrawingMode: boolean;
   onFieldTypeChange?: (fieldType: 'text' | 'number' | 'date') => void;
   pendingFieldType?: 'text' | 'number' | 'date';
@@ -26,8 +36,13 @@ export function FieldSidebar({
   onFieldDelete, 
   onFieldSelect,
   newField,
+  editingField,
+  selectedField,
+  fieldFormInitialValues,
   onFieldSave,
+  onFieldUpdate,
   onFieldCancel,
+  onEditCancel,
   isDrawingMode,
   onFieldTypeChange,
   pendingFieldType = 'text',
@@ -43,17 +58,17 @@ export function FieldSidebar({
   };
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full overflow-hidden sticky top-0 self-start">
+      {/* Header - Fixed */}
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-900">Template Fields</h2>
         <p className="text-sm text-gray-600 mt-1">
           {isDrawingMode ? 'Click and drag on the PDF to create a field' : 'Add fields to your template'}
         </p>
       </div>
 
-      {/* Add Field Button */}
-      <div className="p-4">
+      {/* Add Field Button - Fixed */}
+      <div className="p-4 flex-shrink-0 border-b border-gray-200">
         <Button
           onClick={onAddFieldClick}
           disabled={isDrawingMode}
@@ -65,9 +80,9 @@ export function FieldSidebar({
         </Button>
       </div>
 
-      {/* New Field Form */}
-      {newField && (
-        <div className="p-4 border-b border-gray-200">
+      {/* New Field Form - Always visible when displayed, fixed position */}
+      {newField && !editingField && (
+        <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0 max-h-[60vh] overflow-y-auto">
           <FieldForm
             bounds={newField}
             onSave={onFieldSave}
@@ -79,8 +94,24 @@ export function FieldSidebar({
         </div>
       )}
 
-      {/* Fields List */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Editing Field Form - Show when editing an existing field */}
+      {editingField && selectedField && (
+        <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0 max-h-[60vh] overflow-y-auto">
+          <FieldForm
+            bounds={editingField}
+            onSave={onFieldUpdate || onFieldSave}
+            onCancel={onEditCancel || onFieldCancel}
+            onFieldTypeChange={onFieldTypeChange}
+            defaultFieldType={selectedField.field_type}
+            onPreviewChange={onPreviewChange}
+            initialValues={fieldFormInitialValues}
+            isEditMode={true}
+          />
+        </div>
+      )}
+
+      {/* Fields List - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {fields.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-gray-400 mb-2">
@@ -95,7 +126,9 @@ export function FieldSidebar({
             {fields.map((field) => (
               <Card 
                 key={field.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className={`cursor-pointer hover:shadow-md transition-shadow ${
+                  selectedField?.id === field.id ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                }`}
                 onClick={() => onFieldSelect(field)}
               >
                 <CardContent className="p-4">
@@ -150,8 +183,8 @@ export function FieldSidebar({
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
+      {/* Footer Info - Fixed */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
         <p className="text-xs text-gray-500">
           {fields.length} field{fields.length !== 1 ? 's' : ''} configured
         </p>
