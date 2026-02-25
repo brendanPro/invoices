@@ -1,4 +1,4 @@
-import type { CreateFieldRequest, Field, UpdateFieldRequest } from '@types/field';
+import type { CreateFieldRequest, Field, UpdateFieldRequest } from '@shared/field';
 import type { IFieldsService } from '@netlify/fields/IFieldsService';
 import type { IFieldsRepository } from '@netlify/fields/IFieldsRepository';
 

@@ -4,7 +4,6 @@
     "allowJs": true,
     "strictNullChecks": true,
 
-    // Bundler mode
     "moduleResolution": "bundler",
     "module": "preserve",
     "allowImportingTsExtensions": true,
@@ -15,7 +14,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@netlify/*": ["./netlify/*"],
-      "@types/*": ["./types/*"],
+      "@shared/*": ["./types/*"],
       "@db/*": ["./db/*"]
     }
   },

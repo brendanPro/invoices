@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
-import type { Field, CreateFieldRequest, UpdateFieldRequest } from '@types/field';
+import type { Field, CreateFieldRequest, UpdateFieldRequest } from '@shared/field';
 import { FieldService } from '@netlify/fields/field.service';
 import type { IFieldsRepository } from '@netlify/fields/IFieldsRepository';
 
