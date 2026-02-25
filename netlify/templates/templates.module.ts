@@ -4,21 +4,13 @@ import { TemplateController } from '@netlify/templates/template.controller';
 import type { IFieldsService } from '@netlify/fields/IFieldsService';
 
 export class TemplateModule {
-    private repository: TemplatesRepository;
-    private _service: TemplateService;
-    private _controller: TemplateController;
+  private readonly repository: TemplatesRepository;
+  readonly service: TemplateService;
+  readonly controller: TemplateController;
 
-    constructor(fieldsService: IFieldsService) {
-        this.repository = new TemplatesRepository();
-        this._service = new TemplateService(this.repository, fieldsService);
-        this._controller = new TemplateController(this.service);
-    }
-
-    get controller(): TemplateController {
-        return this._controller;
-    }
-
-    get service(): TemplateService {
-        return this._service;
-    }
+  constructor(fieldsService: IFieldsService) {
+    this.repository = new TemplatesRepository();
+    this.service = new TemplateService(this.repository, fieldsService);
+    this.controller = new TemplateController(this.service);
+  }
 }
