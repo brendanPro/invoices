@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Clipboard } from 'lucide-react';
 import type { TemplateField, FieldBounds, FieldData } from '@/types/template-field';
 import { FieldForm } from './FieldForm';
 
@@ -11,10 +11,11 @@ interface FieldSidebarProps {
   onAddFieldClick: () => void;
   onFieldDelete: (fieldId: number) => void;
   onFieldSelect: (field: TemplateField) => void;
-  newField?: FieldBounds; // Field being created
-  editingField?: FieldBounds; // Field being edited
-  selectedField?: TemplateField; // Currently selected field for editing
-  fieldFormInitialValues?: { // Memoized initial values for the form
+  newField?: FieldBounds;
+  editingField?: FieldBounds;
+  selectedField?: TemplateField;
+  copiedField?: TemplateField;
+  fieldFormInitialValues?: {
     field_name?: string;
     field_type?: 'text' | 'number' | 'date';
     font_size?: number;
@@ -30,14 +31,15 @@ interface FieldSidebarProps {
   onPreviewChange?: (preview: { field_name?: string; font_size?: number; color?: string }) => void;
 }
 
-export function FieldSidebar({ 
-  fields, 
-  onAddFieldClick, 
-  onFieldDelete, 
+export function FieldSidebar({
+  fields,
+  onAddFieldClick,
+  onFieldDelete,
   onFieldSelect,
   newField,
   editingField,
   selectedField,
+  copiedField,
   fieldFormInitialValues,
   onFieldSave,
   onFieldUpdate,
@@ -46,7 +48,7 @@ export function FieldSidebar({
   isDrawingMode,
   onFieldTypeChange,
   pendingFieldType = 'text',
-  onPreviewChange
+  onPreviewChange,
 }: FieldSidebarProps) {
   const getFieldTypeColor = (fieldType: string) => {
     switch (fieldType) {
@@ -124,10 +126,14 @@ export function FieldSidebar({
         ) : (
           <div className="space-y-3">
             {fields.map((field) => (
-              <Card 
-                key={field.id} 
+              <Card
+                key={field.id}
                 className={`cursor-pointer hover:shadow-md transition-shadow ${
-                  selectedField?.id === field.id ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                  selectedField?.id === field.id
+                    ? 'ring-2 ring-blue-500 border-blue-500'
+                    : copiedField?.id === field.id
+                      ? 'ring-2 ring-dashed ring-amber-400 border-amber-400'
+                      : ''
                 }`}
                 onClick={() => onFieldSelect(field)}
               >
@@ -184,10 +190,20 @@ export function FieldSidebar({
       </div>
 
       {/* Footer Info - Fixed */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0 space-y-1">
         <p className="text-xs text-gray-500">
           {fields.length} field{fields.length !== 1 ? 's' : ''} configured
         </p>
+        {copiedField ? (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <Clipboard className="w-3 h-3" />
+            <span>
+              <strong>{copiedField.field_name}</strong> copied — ⌘V to paste
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">Select a field then ⌘C to copy</p>
+        )}
       </div>
     </div>
   );
