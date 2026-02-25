@@ -53,8 +53,11 @@ function isEmailAuthorized(email: string): boolean {
 
 async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
   try {
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+
     const decoded = jwt.verify(token, jwtSecret) as any;
     
     // Check if the email is authorized
