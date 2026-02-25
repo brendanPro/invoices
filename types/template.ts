@@ -1,4 +1,4 @@
-import type { Field } from "./field";
+import type { Field } from './field';
 
 export interface Template {
   id: number;
@@ -7,6 +7,8 @@ export interface Template {
   user_email: string;
   created_at: string;
   updated_at: string;
-  fields: Field[];
 }
 
+export interface TemplateWithFields extends Template {
+  fields: Field[];
+}

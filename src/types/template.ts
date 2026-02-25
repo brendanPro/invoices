@@ -1,6 +1,5 @@
-import type { Template } from "@types/template";
-import type { FieldType } from "@types/field";
-import type { Field } from "@types/field";
+import type { Template } from '@shared/template';
+import type { FieldType, Field } from '@shared/field';
 
 // Template creation and update requests
 export interface CreateTemplateRequest {
