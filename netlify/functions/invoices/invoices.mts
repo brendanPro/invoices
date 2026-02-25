@@ -34,7 +34,7 @@ export default async (req: Request) => {
         return await invoiceController.getInvoice(req, userEmail);
 
       case HttpMethod.POST:
-        return await invoiceController.createInvoice(req);
+        return await invoiceController.createInvoice(req, userEmail);
 
       case HttpMethod.DELETE:
         return await invoiceController.deleteInvoice(req, userEmail);

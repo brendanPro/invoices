@@ -1,10 +1,7 @@
 import { HttpHandler } from '@netlify/lib/http-handler';
 import type { IInvoiceService } from '@netlify/invoices/IInvoiceService';
-
-interface CreateInvoiceRequest {
-  template_id: number;
-  invoice_data: Record<string, any>;
-}
+import type { GenerateInvoiceRequest } from '@/types/index';
+import { AppError, ValidationError } from '@netlify/lib/errors';
 
 export class InvoiceController {
   private invoiceService: IInvoiceService;
@@ -15,33 +12,17 @@ export class InvoiceController {
 
   async getInvoice(req: Request, userEmail: string): Promise<Response> {
     try {
-      const invoiceId = this.getInvoiceId(req);
-
-      if (invoiceId instanceof Response) {
-        return invoiceId;
-      }
+      const invoiceId = this.extractInvoiceId(req);
 
       if (invoiceId === null) {
-        // No invoice ID provided - list all invoices for the user
         return await this.listInvoices(userEmail);
       }
 
-      // Get invoice with template and PDF blob (validates ownership)
-      const { invoice, pdfBlob } = await this.invoiceService.getInvoiceWithTemplate(
-        invoiceId,
-        userEmail,
-      );
-
-      // Return PDF blob
+      const { invoice, pdfBlob } = await this.invoiceService.getInvoiceWithTemplate(invoiceId, userEmail);
       return HttpHandler.pdf(pdfBlob, `invoice-${invoice.id}`);
     } catch (error) {
+      if (error instanceof AppError) return HttpHandler.fromAppError(error);
       console.error('Controller: Error getting invoice:', error);
-      if (
-        error instanceof Error &&
-        (error.message === 'Invoice not found' || error.message === 'Template not found')
-      ) {
-        return HttpHandler.notFound(error.message);
-      }
       return HttpHandler.internalError('Failed to retrieve invoice');
     }
   }
@@ -53,30 +34,17 @@ export class InvoiceController {
     );
   }
 
-  async createInvoice(req: Request): Promise<Response> {
+  async createInvoice(req: Request, userEmail: string): Promise<Response> {
     try {
-      const body = await HttpHandler.extractJson<CreateInvoiceRequest>(req);
+      const body = await HttpHandler.extractJson<GenerateInvoiceRequest>(req);
       const { template_id, invoice_data } = body;
 
-      // Validate required fields
-      const missingField = HttpHandler.validateRequiredFields(body, [
-        'template_id',
-        'invoice_data',
-      ]);
-      if (missingField) {
-        return HttpHandler.validationError(missingField);
-      }
+      const missingField = HttpHandler.validateRequiredFields(body, ['template_id', 'invoice_data']);
+      if (missingField) return HttpHandler.validationError(missingField);
 
-      // Validate field types
-      const typeError = HttpHandler.validateFieldTypes(body, {
-        template_id: 'number',
-        invoice_data: 'object',
-      });
-      if (typeError) {
-        return HttpHandler.validationError(typeError);
-      }
+      const typeError = HttpHandler.validateFieldTypes(body, { template_id: 'number', invoice_data: 'object' });
+      if (typeError) return HttpHandler.validationError(typeError);
 
-      // Additional business validation
       if (!this.invoiceService.validateTemplateId(template_id)) {
         return HttpHandler.validationError('Template ID must be a valid positive integer');
       }
@@ -85,24 +53,18 @@ export class InvoiceController {
         return HttpHandler.validationError('Invoice data must be a valid object');
       }
 
-      const invoice = await this.invoiceService.createInvoice(template_id, invoice_data);
+      const invoice = await this.invoiceService.createInvoice(template_id, invoice_data, userEmail);
       return HttpHandler.created(invoice);
     } catch (error) {
+      if (error instanceof AppError) return HttpHandler.fromAppError(error);
       console.error('Controller: Error creating invoice:', error);
-      if (error instanceof Error && error.message === 'Template not found') {
-        return HttpHandler.notFound('Template not found');
-      }
       return HttpHandler.internalError('Failed to create invoice');
     }
   }
 
   async deleteInvoice(req: Request, userEmail: string): Promise<Response> {
     try {
-      const invoiceId = this.getInvoiceId(req);
-
-      if (invoiceId instanceof Response) {
-        return invoiceId;
-      }
+      const invoiceId = this.extractInvoiceId(req);
 
       if (invoiceId === null) {
         return HttpHandler.validationError('Invoice ID is required');
@@ -111,31 +73,20 @@ export class InvoiceController {
       await this.invoiceService.deleteInvoice(invoiceId, userEmail);
       return HttpHandler.success({ message: 'Invoice deleted successfully' });
     } catch (error) {
+      if (error instanceof AppError) return HttpHandler.fromAppError(error);
       console.error('Controller: Error deleting invoice:', error);
-      if (
-        error instanceof Error &&
-        (error.message === 'Invoice not found' || error.message === 'Template not found')
-      ) {
-        return HttpHandler.notFound('Invoice not found');
-      }
       return HttpHandler.internalError('Failed to delete invoice');
     }
   }
 
-  private getInvoiceId(req: Request): number | Response | null {
+  private extractInvoiceId(req: Request): number | null {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    if (pathParts.length < 3) {
-      return null;
-    }
+    if (pathParts.length < 3) return null;
 
-    const invoiceId = pathParts[2];
-
-    const id = parseInt(invoiceId, 10);
-    if (isNaN(id) || id <= 0) {
-      return HttpHandler.validationError('Invoice ID must be a valid positive integer');
-    }
+    const id = parseInt(pathParts[2], 10);
+    if (isNaN(id) || id <= 0) throw new ValidationError('Invoice ID must be a valid positive integer');
 
     return id;
   }
