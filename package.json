@@ -6,7 +6,7 @@
   "main": "src/index.tsx",
   "module": "src/index.tsx",
   "scripts": {
-    "dev": "bun --hot src/index.tsx",
+    "dev": "netlify dev",
     "start": "NODE_ENV=production bun src/index.tsx",
     "build": "bun run build.ts",
     "db:generate": "drizzle-kit generate",
