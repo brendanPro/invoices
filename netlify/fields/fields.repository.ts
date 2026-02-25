@@ -7,13 +7,14 @@ import type { IFieldsRepository } from '@netlify/fields/IFieldsRepository';
 type DrizzleField = typeof templateFields.$inferSelect;
 
 type UpdateFieldData = Partial<Pick<typeof templateFields.$inferInsert,
-  'field_name' | 'x_position' | 'y_position' | 'width' | 'height' | 'font_size' | 'field_type' | 'color'
+  'field_name' | 'x_position' | 'y_position' | 'width' | 'height' | 'font_size' | 'field_type' | 'color' | 'group_id'
 >>;
 
 function transformField(drizzleField: DrizzleField): Field {
   return {
     id: drizzleField.id,
     template_id: drizzleField.template_id,
+    group_id: drizzleField.group_id ?? null,
     field_name: drizzleField.field_name,
     x_position: parseFloat(drizzleField.x_position),
     y_position: parseFloat(drizzleField.y_position),
@@ -33,6 +34,7 @@ export class FieldsRepository implements IFieldsRepository {
     const result = await db.insert(templateFields)
       .values({
         template_id: fieldData.template_id,
+        group_id: fieldData.group_id ?? null,
         field_name: fieldData.field_name,
         x_position: String(fieldData.x_position),
         y_position: String(fieldData.y_position),
@@ -90,6 +92,7 @@ export class FieldsRepository implements IFieldsRepository {
     if (fieldData.font_size !== undefined) updateData.font_size = String(fieldData.font_size);
     if (fieldData.field_type !== undefined) updateData.field_type = fieldData.field_type;
     if (fieldData.color !== undefined) updateData.color = fieldData.color;
+    if ('group_id' in fieldData) updateData.group_id = fieldData.group_id ?? null;
 
     const result = await db.update(templateFields)
       .set(updateData)
