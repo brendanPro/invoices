@@ -8,8 +8,15 @@ import {
   useUpdateTemplateField,
   useDeleteTemplateField,
 } from '@/hooks/useTemplateFields';
+import {
+  useTemplateGroups,
+  useCreateGroup,
+  useDeleteGroup,
+  useMoveGroup,
+} from '@/hooks/useTemplateGroups';
 import type { Template } from '@/types/index';
 import type { TemplateField, FieldBounds, FieldData } from '@/types/template-field';
+import type { TemplateFieldGroup } from '@/types/template-group';
 import { useSearch } from '@tanstack/react-router';
 
 const PASTE_OFFSET_PX = 20;
@@ -38,11 +45,17 @@ export function FieldConfigurationStep({
     return propId || routeId;
   }, [template?.id, searchTemplateId]);
 
-  // React Query hooks
+  // React Query hooks — fields
   const { data: fields = [], isLoading, error, refetch: refetchFields } = useTemplateFields(templateId);
   const createFieldMutation = useCreateTemplateField();
   const updateFieldMutation = useUpdateTemplateField();
   const deleteFieldMutation = useDeleteTemplateField();
+
+  // React Query hooks — groups
+  const { data: groups = [] } = useTemplateGroups(templateId);
+  const createGroupMutation = useCreateGroup();
+  const deleteGroupMutation = useDeleteGroup();
+  const moveGroupMutation = useMoveGroup();
 
   const handleAddFieldClick = () => {
     setIsDrawingMode(true);
@@ -171,6 +184,58 @@ export function FieldConfigurationStep({
   const handleEditCancel = () => {
     setSelectedField(null);
   };
+
+  const handleCreateGroup = async (name: string) => {
+    try {
+      await createGroupMutation.mutateAsync({ templateId, data: { name } });
+    } catch (err) {
+      console.error('Failed to create group:', err);
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: number) => {
+    if (!confirm('Delete this group? Fields will become ungrouped.')) return;
+    try {
+      await deleteGroupMutation.mutateAsync({ templateId, groupId });
+    } catch (err) {
+      console.error('Failed to delete group:', err);
+    }
+  };
+
+  const handleAssignFieldToGroup = async (fieldId: number, groupId: number | null) => {
+    const field = fields.find((f) => f.id === fieldId);
+    if (!field) return;
+    try {
+      await updateFieldMutation.mutateAsync({
+        templateId,
+        fieldId,
+        fieldData: {
+          field_name: field.field_name,
+          field_type: field.field_type,
+          font_size: parseFloat(String(field.font_size)),
+          x_position: parseFloat(String(field.x_position)),
+          y_position: parseFloat(String(field.y_position)),
+          width: parseFloat(String(field.width)),
+          height: parseFloat(String(field.height)),
+          color: field.color || '#000000',
+          group_id: groupId,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to assign field to group:', err);
+    }
+  };
+
+  const handleMoveGroup = useCallback(
+    async (groupId: number, dx: number, dy: number) => {
+      try {
+        await moveGroupMutation.mutateAsync({ templateId, groupId, data: { dx, dy } });
+      } catch (err) {
+        console.error('Failed to move group:', err);
+      }
+    },
+    [moveGroupMutation, templateId],
+  );
 
   // Memoize initial values for the form (based on selectedField values)
   // This prevents the form from resetting when preview state changes
@@ -336,9 +401,13 @@ export function FieldConfigurationStep({
       {/* Left Sidebar */}
       <FieldSidebar
         fields={fields}
+        groups={groups}
         onAddFieldClick={handleAddFieldClick}
         onFieldDelete={handleFieldDelete}
         onFieldSelect={handleFieldSelect}
+        onCreateGroup={handleCreateGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onAssignFieldToGroup={handleAssignFieldToGroup}
         newField={newFieldBounds || undefined}
         editingField={editingFieldBounds || undefined}
         selectedField={selectedField || undefined}
@@ -359,6 +428,7 @@ export function FieldConfigurationStep({
         key={templateId}
         templateId={templateId}
         fields={fields}
+        groups={groups}
         isDrawingMode={isDrawingMode}
         pendingField={newFieldBounds || undefined}
         selectedFieldId={selectedField?.id}
@@ -370,7 +440,6 @@ export function FieldConfigurationStep({
         }}
         onSelectedFieldUpdate={(bounds) => {
           if (selectedField) {
-            // Update the selectedField state with new bounds
             setSelectedField({
               ...selectedField,
               x_position: bounds.x.toString(),
@@ -380,6 +449,7 @@ export function FieldConfigurationStep({
             });
           }
         }}
+        onGroupMove={handleMoveGroup}
       />
 
       {/* Action Buttons - Fixed at bottom right */}
