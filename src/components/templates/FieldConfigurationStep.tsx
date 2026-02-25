@@ -12,6 +12,8 @@ import type { Template } from '@/types/index';
 import type { TemplateField, FieldBounds, FieldData } from '@/types/template-field';
 import { useSearch } from '@tanstack/react-router';
 
+const PASTE_OFFSET_PX = 20;
+
 interface FieldConfigurationStepProps {
   template: Template;
   onComplete: () => void;
@@ -27,6 +29,7 @@ export function FieldConfigurationStep({
   const [newFieldBounds, setNewFieldBounds] = useState<FieldBounds | null>(null);
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
   const [pendingFieldType, setPendingFieldType] = useState<'text' | 'number' | 'date'>('text');
+  const [copiedField, setCopiedField] = useState<TemplateField | null>(null);
 
   const { templateId: searchTemplateId } = useSearch({ from: '/templates' });
   const templateId = useMemo(() => {
@@ -207,7 +210,76 @@ export function FieldConfigurationStep({
   // Clear preview state when field selection changes
   useEffect(() => {
     setPreviewState(null);
-  }, [selectedField?.id]); // Clear when selecting a different field or clearing selection
+  }, [selectedField?.id]);
+
+  const buildCopiedFieldName = useCallback(
+    (originalName: string, existingFields: TemplateField[]): string => {
+      const baseName = originalName.replace(/ \(copy(?: \d+)?\)$/, '');
+      const existingNames = new Set(existingFields.map((f) => f.field_name));
+
+      const candidate = `${baseName} (copy)`;
+      if (!existingNames.has(candidate)) return candidate;
+
+      let index = 2;
+      while (existingNames.has(`${baseName} (copy ${index})`)) {
+        index++;
+      }
+      return `${baseName} (copy ${index})`;
+    },
+    [],
+  );
+
+  const handlePaste = useCallback(async () => {
+    if (!copiedField) return;
+
+    const fieldName = buildCopiedFieldName(copiedField.field_name, fields);
+
+    try {
+      await createFieldMutation.mutateAsync({
+        templateId,
+        fieldData: {
+          template_id: templateId,
+          field_name: fieldName,
+          x_position: parseFloat(copiedField.x_position) + PASTE_OFFSET_PX,
+          y_position: parseFloat(copiedField.y_position) + PASTE_OFFSET_PX,
+          width: parseFloat(copiedField.width),
+          height: parseFloat(copiedField.height),
+          font_size: parseFloat(copiedField.font_size),
+          field_type: copiedField.field_type,
+          color: copiedField.color || '#000000',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to paste field:', error);
+    }
+  }, [copiedField, fields, buildCopiedFieldName, createFieldMutation, templateId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isEditableTarget =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+
+      if (isEditableTarget) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && e.key === 'c' && selectedField) {
+        e.preventDefault();
+        setCopiedField(selectedField);
+      }
+
+      if (isMod && e.key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedField, handlePaste]);
 
   if (!templateId) {
     return (
@@ -270,6 +342,7 @@ export function FieldConfigurationStep({
         newField={newFieldBounds || undefined}
         editingField={editingFieldBounds || undefined}
         selectedField={selectedField || undefined}
+        copiedField={copiedField || undefined}
         fieldFormInitialValues={fieldFormInitialValues}
         onFieldSave={handleFieldSave}
         onFieldUpdate={handleFieldUpdate}
