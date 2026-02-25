@@ -21,11 +21,13 @@ interface InteractivePdfViewerProps {
   pendingField?: FieldBounds;
   selectedFieldId?: number;
   selectedField?: TemplateField;
+  selectedGroupId?: number;
   onFieldCreate: (bounds: FieldBounds) => void;
   onDrawingComplete: () => void;
   onPendingFieldUpdate?: (bounds: FieldBounds) => void;
   onSelectedFieldUpdate?: (bounds: FieldBounds) => void;
   onGroupMove?: (groupId: number, dx: number, dy: number) => void;
+  onGroupSelect?: (groupId: number) => void;
 }
 
 export function InteractivePdfViewer({
@@ -36,11 +38,13 @@ export function InteractivePdfViewer({
   pendingField,
   selectedFieldId,
   selectedField,
+  selectedGroupId,
   onFieldCreate,
   onDrawingComplete,
   onPendingFieldUpdate,
   onSelectedFieldUpdate,
   onGroupMove,
+  onGroupSelect,
 }: InteractivePdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
@@ -75,6 +79,8 @@ export function InteractivePdfViewer({
     startX: number;
     startY: number;
   }>(null);
+
+  const [groupDragOffset, setGroupDragOffset] = useState<{ x: number; y: number } | null>(null);
 
   const { user } = useAuth();
   const { templateId: searchTemplateId } = useSearch({ from: '/templates' });
@@ -281,6 +287,7 @@ export function InteractivePdfViewer({
         );
         if (hit) {
           e.cancelBubble = true;
+          onGroupSelect?.(hit.group.id);
           setDraggingGroup({ groupId: hit.group.id, startX: pos.x, startY: pos.y });
           return;
         }
@@ -295,9 +302,14 @@ export function InteractivePdfViewer({
   };
 
   const handleMouseMove = (e: any) => {
-    // Group drag: just track movement (visual feedback handled by state)
     if (draggingGroup) {
-      // No visual needed during drag; commit on mouseup
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (pos) {
+        setGroupDragOffset({
+          x: pos.x - draggingGroup.startX,
+          y: pos.y - draggingGroup.startY,
+        });
+      }
       return;
     }
 
@@ -540,16 +552,19 @@ export function InteractivePdfViewer({
   };
 
   const handleMouseUp = (e: any) => {
-    if (draggingGroup && onGroupMove) {
-      const pos = e.target?.getStage()?.getPointerPosition();
-      if (pos) {
-        const dx = (pos.x - draggingGroup.startX) / scale;
-        const dy = (pos.y - draggingGroup.startY) / scale;
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-          onGroupMove(draggingGroup.groupId, dx, dy);
+    if (draggingGroup) {
+      if (onGroupMove) {
+        const pos = e.target?.getStage()?.getPointerPosition();
+        if (pos) {
+          const dx = (pos.x - draggingGroup.startX) / scale;
+          const dy = (pos.y - draggingGroup.startY) / scale;
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            onGroupMove(draggingGroup.groupId, dx, dy);
+          }
         }
       }
       setDraggingGroup(null);
+      setGroupDragOffset(null);
       return;
     }
 
@@ -624,34 +639,39 @@ export function InteractivePdfViewer({
                   ];
                   const color = groupColors[idx % groupColors.length];
                   const isDragged = draggingGroup?.groupId === group.id;
+                  const isSelected = selectedGroupId === group.id;
+                  const offsetX = isDragged && groupDragOffset ? groupDragOffset.x : 0;
+                  const offsetY = isDragged && groupDragOffset ? groupDragOffset.y : 0;
                   return (
                     <React.Fragment key={`group-${group.id}`}>
                       <Rect
-                        x={x}
-                        y={y}
+                        x={x + offsetX}
+                        y={y + offsetY}
                         width={width}
                         height={height}
-                        fill={isDragged ? color.fill.replace('0.05', '0.12') : color.fill}
-                        stroke={color.stroke}
-                        strokeWidth={1.5}
-                        dash={[6, 3]}
+                        fill={isDragged ? color.fill.replace('0.05', '0.15') : color.fill}
+                        stroke={isSelected ? '#f59e0b' : color.stroke}
+                        strokeWidth={isSelected ? 2.5 : 1.5}
+                        dash={isDragged ? undefined : [6, 3]}
+                        shadowBlur={isSelected ? 6 : 0}
+                        shadowColor="rgba(245,158,11,0.4)"
                         listening={!isDrawingMode && !pendingField && !selectedField}
                         onMouseEnter={(ev) => {
                           const container = ev.target.getStage()?.container();
-                          if (container) container.style.cursor = 'grab';
+                          if (container) container.style.cursor = isDragged ? 'grabbing' : 'grab';
                         }}
                         onMouseLeave={(ev) => {
                           const container = ev.target.getStage()?.container();
-                          if (container) container.style.cursor = 'default';
+                          if (container && !draggingGroup) container.style.cursor = 'default';
                         }}
                       />
                       <Text
-                        x={x + 4}
-                        y={y - 18}
+                        x={x + offsetX + 4}
+                        y={y + offsetY - 18}
                         text={group.name}
                         fontSize={11}
                         fontStyle="bold"
-                        fill={color.stroke}
+                        fill={isSelected ? '#f59e0b' : color.stroke}
                         listening={false}
                       />
                     </React.Fragment>

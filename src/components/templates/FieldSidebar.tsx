@@ -17,6 +17,9 @@ interface FieldSidebarProps {
   onCreateGroup: (name: string) => void;
   onDeleteGroup: (groupId: number) => void;
   onAssignFieldToGroup: (fieldId: number, groupId: number | null) => void;
+  onGroupSelect: (groupId: number) => void;
+  selectedGroupId?: number;
+  copiedGroupId?: number;
   newField?: FieldBounds;
   editingField?: FieldBounds;
   selectedField?: TemplateField;
@@ -143,12 +146,15 @@ interface GroupSectionProps {
   groupIndex: number;
   fields: TemplateField[];
   allGroups: TemplateFieldGroup[];
+  isSelected: boolean;
+  isCopied: boolean;
   selectedField?: TemplateField;
   copiedField?: TemplateField;
   onFieldSelect: (field: TemplateField) => void;
   onFieldDelete: (fieldId: number) => void;
   onDeleteGroup: (groupId: number) => void;
   onAssignFieldToGroup: (fieldId: number, groupId: number | null) => void;
+  onGroupSelect: (groupId: number) => void;
 }
 
 function GroupSection({
@@ -156,12 +162,15 @@ function GroupSection({
   groupIndex,
   fields,
   allGroups,
+  isSelected,
+  isCopied,
   selectedField,
   copiedField,
   onFieldSelect,
   onFieldDelete,
   onDeleteGroup,
   onAssignFieldToGroup,
+  onGroupSelect,
 }: GroupSectionProps) {
   const [collapsed, setCollapsed] = useState(false);
   const colorClass = getGroupColor(groupIndex);
@@ -169,13 +178,19 @@ function GroupSection({
   return (
     <div className="mb-3">
       <div
-        className={`flex items-center justify-between px-2 py-1.5 rounded-md border cursor-pointer select-none ${colorClass}`}
-        onClick={() => setCollapsed((c) => !c)}
+        className={`flex items-center justify-between px-2 py-1.5 rounded-md border cursor-pointer select-none ${colorClass} ${
+          isSelected ? 'ring-2 ring-amber-400' : isCopied ? 'ring-2 ring-dashed ring-amber-300 opacity-80' : ''
+        }`}
+        onClick={() => {
+          onGroupSelect(group.id);
+          setCollapsed((c) => !c);
+        }}
       >
         <div className="flex items-center gap-1.5 min-w-0">
           {collapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
           <span className="font-medium text-sm truncate">{group.name}</span>
           <span className="text-xs opacity-70">({fields.length})</span>
+          {isCopied && <Clipboard className="w-3 h-3 shrink-0 text-amber-500" aria-label="Copied" />}
         </div>
         <Button
           variant="ghost"
@@ -224,6 +239,9 @@ export function FieldSidebar({
   onCreateGroup,
   onDeleteGroup,
   onAssignFieldToGroup,
+  onGroupSelect,
+  selectedGroupId,
+  copiedGroupId,
   newField,
   editingField,
   selectedField,
@@ -353,12 +371,15 @@ export function FieldSidebar({
                 groupIndex={idx}
                 fields={fields.filter((f) => f.group_id === group.id)}
                 allGroups={groups}
+                isSelected={selectedGroupId === group.id}
+                isCopied={copiedGroupId === group.id}
                 selectedField={selectedField}
                 copiedField={copiedField}
                 onFieldSelect={onFieldSelect}
                 onFieldDelete={onFieldDelete}
                 onDeleteGroup={onDeleteGroup}
                 onAssignFieldToGroup={onAssignFieldToGroup}
+                onGroupSelect={onGroupSelect}
               />
             ))}
 
@@ -395,7 +416,14 @@ export function FieldSidebar({
         <p className="text-xs text-gray-500">
           {fields.length} field{fields.length !== 1 ? 's' : ''} — {groups.length} group{groups.length !== 1 ? 's' : ''}
         </p>
-        {copiedField ? (
+        {copiedGroupId ? (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <Clipboard className="w-3 h-3" />
+            <span>
+              Group <strong>{groups.find((g) => g.id === copiedGroupId)?.name}</strong> copied — ⌘V to paste
+            </span>
+          </p>
+        ) : copiedField ? (
           <p className="text-xs text-amber-600 flex items-center gap-1">
             <Clipboard className="w-3 h-3" />
             <span>
@@ -403,7 +431,7 @@ export function FieldSidebar({
             </span>
           </p>
         ) : (
-          <p className="text-xs text-gray-400">Select a field then ⌘C to copy</p>
+          <p className="text-xs text-gray-400">Select a field or group then ⌘C to copy</p>
         )}
       </div>
     </div>

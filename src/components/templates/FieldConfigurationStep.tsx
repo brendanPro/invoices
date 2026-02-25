@@ -37,6 +37,8 @@ export function FieldConfigurationStep({
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
   const [pendingFieldType, setPendingFieldType] = useState<'text' | 'number' | 'date'>('text');
   const [copiedField, setCopiedField] = useState<TemplateField | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [copiedGroup, setCopiedGroup] = useState<{ group: TemplateFieldGroup; fields: TemplateField[] } | null>(null);
 
   const { templateId: searchTemplateId } = useSearch({ from: '/templates' });
   const templateId = useMemo(() => {
@@ -237,6 +239,58 @@ export function FieldConfigurationStep({
     [moveGroupMutation, templateId],
   );
 
+  const handleGroupSelect = useCallback((groupId: number) => {
+    setSelectedGroupId(groupId);
+    setSelectedField(null);
+  }, []);
+
+  const handlePasteGroup = useCallback(async () => {
+    if (!copiedGroup) return;
+
+    const existingGroupNames = new Set(groups.map((g) => g.name));
+    const baseName = copiedGroup.group.name.replace(/ \(copy(?: \d+)?\)$/, '');
+    let candidateName = `${baseName} (copy)`;
+    if (existingGroupNames.has(candidateName)) {
+      let idx = 2;
+      while (existingGroupNames.has(`${baseName} (copy ${idx})`)) idx++;
+      candidateName = `${baseName} (copy ${idx})`;
+    }
+
+    try {
+      const newGroup = await createGroupMutation.mutateAsync({ templateId, data: { name: candidateName } });
+
+      const existingFieldNames = new Set(fields.map((f) => f.field_name));
+      for (const field of copiedGroup.fields) {
+        const fieldBase = field.field_name.replace(/ \(copy(?: \d+)?\)$/, '');
+        let fieldName = `${fieldBase} (copy)`;
+        if (existingFieldNames.has(fieldName)) {
+          let idx = 2;
+          while (existingFieldNames.has(`${fieldBase} (copy ${idx})`)) idx++;
+          fieldName = `${fieldBase} (copy ${idx})`;
+        }
+        existingFieldNames.add(fieldName);
+
+        await createFieldMutation.mutateAsync({
+          templateId,
+          fieldData: {
+            template_id: templateId,
+            group_id: newGroup.id,
+            field_name: fieldName,
+            x_position: parseFloat(String(field.x_position)) + PASTE_OFFSET_PX,
+            y_position: parseFloat(String(field.y_position)) + PASTE_OFFSET_PX,
+            width: parseFloat(String(field.width)),
+            height: parseFloat(String(field.height)),
+            font_size: parseFloat(String(field.font_size)),
+            field_type: field.field_type,
+            color: field.color || '#000000',
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to paste group:', err);
+    }
+  }, [copiedGroup, groups, fields, createGroupMutation, createFieldMutation, templateId]);
+
   // Memoize initial values for the form (based on selectedField values)
   // This prevents the form from resetting when preview state changes
   // The values only change when we select a different field, not during preview updates
@@ -331,20 +385,34 @@ export function FieldConfigurationStep({
 
       const isMod = e.metaKey || e.ctrlKey;
 
-      if (isMod && e.key === 'c' && selectedField) {
+      if (isMod && e.key === 'c') {
         e.preventDefault();
-        setCopiedField(selectedField);
+        if (selectedGroupId) {
+          const group = groups.find((g) => g.id === selectedGroupId);
+          if (group) {
+            const groupFields = fields.filter((f) => f.group_id === selectedGroupId);
+            setCopiedGroup({ group, fields: groupFields });
+            setCopiedField(null);
+          }
+        } else if (selectedField) {
+          setCopiedField(selectedField);
+          setCopiedGroup(null);
+        }
       }
 
       if (isMod && e.key === 'v') {
         e.preventDefault();
-        handlePaste();
+        if (copiedGroup) {
+          handlePasteGroup();
+        } else {
+          handlePaste();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedField, handlePaste]);
+  }, [selectedField, selectedGroupId, groups, fields, copiedGroup, handlePaste, handlePasteGroup]);
 
   if (!templateId) {
     return (
@@ -408,6 +476,9 @@ export function FieldConfigurationStep({
         onCreateGroup={handleCreateGroup}
         onDeleteGroup={handleDeleteGroup}
         onAssignFieldToGroup={handleAssignFieldToGroup}
+        onGroupSelect={handleGroupSelect}
+        selectedGroupId={selectedGroupId || undefined}
+        copiedGroupId={copiedGroup?.group.id}
         newField={newFieldBounds || undefined}
         editingField={editingFieldBounds || undefined}
         selectedField={selectedField || undefined}
@@ -433,6 +504,7 @@ export function FieldConfigurationStep({
         pendingField={newFieldBounds || undefined}
         selectedFieldId={selectedField?.id}
         selectedField={selectedField || undefined}
+        selectedGroupId={selectedGroupId || undefined}
         onFieldCreate={handleFieldCreate}
         onDrawingComplete={handleDrawingComplete}
         onPendingFieldUpdate={(bounds) => {
@@ -450,6 +522,7 @@ export function FieldConfigurationStep({
           }
         }}
         onGroupMove={handleMoveGroup}
+        onGroupSelect={handleGroupSelect}
       />
 
       {/* Action Buttons - Fixed at bottom right */}
