@@ -3,6 +3,7 @@ export type FieldType = 'text' | 'number' | 'date';
 export interface Field {
   id: number;
   template_id: number;
+  group_id: number | null;
   field_name: string;
   x_position: number;
   y_position: number;
@@ -24,7 +25,7 @@ export type CreateFieldRequest = Pick<Field,
   'font_size' |
   'field_type' |
   'color'
->;
+> & { group_id?: number | null };
 
 export type UpdateFieldRequest = Partial<Pick<Field,
   'field_name' |
@@ -34,5 +35,6 @@ export type UpdateFieldRequest = Partial<Pick<Field,
   'height' |
   'font_size' |
   'field_type' |
-  'color'
+  'color' |
+  'group_id'
 >>;
