@@ -1,5 +1,5 @@
 import { blobs as blobsTemplateService } from '@netlify/lib/blobs';
-import type { Template } from '@/types/index';
+import type { Template, TemplateWithFields } from '@/types/index';
 import type { ITemplatesRepository } from '@netlify/templates/ITemplatesRepository';
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
 import type { IFieldsService } from '@netlify/fields/IFieldsService';
@@ -73,14 +73,13 @@ export class TemplateService implements ITemplateService {
     }
   }
 
-  async getTemplateByIdWithFields(templateId: number, userEmail: string): Promise<Template | null> {
+  async getTemplateByIdWithFields(templateId: number, userEmail: string): Promise<TemplateWithFields | null> {
     const template = await this.repository.findById(templateId);
-    if (!template) throw new Error('Template not found')
-    if (template.user_email !== userEmail) throw new Error('Template not found')
+    if (!template) throw new Error('Template not found');
+    if (template.user_email !== userEmail) throw new Error('Template not found');
 
     const fields = await this.fieldsService.findFieldsByTemplateId(templateId);
-    template.fields = fields;
-    return template;
+    return { ...template, fields };
   }
 
   validateTemplateName(name: string): boolean {

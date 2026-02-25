@@ -1,6 +1,6 @@
 import { PDFDocument, rgb } from 'pdf-lib';
 import { blobs } from '@netlify/lib/blobs';
-import type { Invoice, TemplateField } from '@/types/index';
+import type { Invoice, TemplateField, TemplateWithFields } from '@/types/index';
 import type { IInvoicesRepository } from '@netlify/invoices/IInvoicesRepository';
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
 import type { IInvoiceService, InvoiceWithTemplate } from '@netlify/invoices/IInvoiceService';

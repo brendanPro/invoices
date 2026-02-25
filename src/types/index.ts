@@ -22,6 +22,9 @@ export type {
   ValidationErrorResponse,
 } from './api';
 
+export type { TemplateWithFields } from '@shared/template';
+export type { Field } from '@shared/field';
+
 export type {
   Template,
   TemplateField,

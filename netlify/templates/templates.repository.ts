@@ -4,7 +4,9 @@ import { templates } from '@db/schema';
 import type { Template } from '@/types/index';
 import type { ITemplatesRepository } from '@netlify/templates/ITemplatesRepository';
 
-function transformTemplate(drizzleTemplate: any): Template {
+type DrizzleTemplate = typeof templates.$inferSelect;
+
+function transformTemplate(drizzleTemplate: DrizzleTemplate): Template {
   return {
     id: drizzleTemplate.id,
     name: drizzleTemplate.name,
