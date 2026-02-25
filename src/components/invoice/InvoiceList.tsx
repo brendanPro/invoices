@@ -120,7 +120,10 @@ export function InvoiceList({ onInvoiceSelected }: InvoiceListProps) {
             {invoices.map((invoice) => (
               <div
                 key={invoice.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
+                  onInvoiceSelected ? 'cursor-pointer hover:bg-gray-50' : ''
+                }`}
+                onClick={() => onInvoiceSelected?.(invoice)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -138,7 +141,7 @@ export function InvoiceList({ onInvoiceSelected }: InvoiceListProps) {
                     Generated: {formatDate(invoice.generated_at)}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 ml-4">
+                <div className="flex flex-col gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
                   <Button
                     variant="outline"
                     size="sm"
@@ -147,11 +150,6 @@ export function InvoiceList({ onInvoiceSelected }: InvoiceListProps) {
                   >
                     {generateMutation.isPending ? 'Generating...' : 'Download'}
                   </Button>
-                  {onInvoiceSelected && (
-                    <Button variant="default" size="sm" onClick={() => onInvoiceSelected(invoice)}>
-                      View
-                    </Button>
-                  )}
                   <Button
                     variant="destructive"
                     size="sm"
