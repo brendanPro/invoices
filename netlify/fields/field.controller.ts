@@ -25,7 +25,7 @@ export class FieldController {
       await this.validateTemplateAccess(templateId, userEmail);
 
       const body = await req.json();
-      const { field_name, x_position, y_position, width, height, font_size, field_type, color } = body;
+      const { field_name, x_position, y_position, width, height, font_size, field_type, color, group_id } = body;
 
       if (!field_name || x_position === undefined || y_position === undefined ||
           width === undefined || height === undefined || font_size === undefined || !field_type) {
@@ -42,6 +42,7 @@ export class FieldController {
         font_size: parseFloat(font_size),
         field_type,
         color: this.normalizeColor(color),
+        group_id: typeof group_id === 'number' ? group_id : null,
       };
 
       return HttpHandler.handleAsync(
@@ -60,7 +61,7 @@ export class FieldController {
       await this.validateTemplateAccess(templateId, userEmail);
 
       const body = await req.json();
-      const { field_name, x_position, y_position, width, height, font_size, field_type, color } = body;
+      const { field_name, x_position, y_position, width, height, font_size, field_type, color, group_id } = body;
 
       const updateData: UpdateFieldRequest = {};
       if (field_name !== undefined) updateData.field_name = field_name;
@@ -71,6 +72,7 @@ export class FieldController {
       if (font_size !== undefined) updateData.font_size = parseFloat(font_size);
       if (field_type !== undefined) updateData.field_type = field_type;
       if (color !== undefined) updateData.color = this.normalizeColor(color);
+      if ('group_id' in body) updateData.group_id = typeof group_id === 'number' ? group_id : null;
 
       return HttpHandler.handleAsync(
         () => this.fieldService.updateField(templateId, fieldId, updateData),
