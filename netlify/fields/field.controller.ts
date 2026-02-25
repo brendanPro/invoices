@@ -1,7 +1,7 @@
 import { HttpHandler } from '@netlify/lib/http-handler';
 import type { IFieldsService } from '@netlify/fields/IFieldsService';
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
-import type { CreateFieldRequest, UpdateFieldRequest } from '@types/field';
+import type { CreateFieldRequest, UpdateFieldRequest } from '@shared/field';
 
 export class FieldController {
   private fieldService: IFieldsService;

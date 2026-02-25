@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '@db/index';
 import { templateFields } from '@db/schema';
-import type { CreateFieldRequest, Field, UpdateFieldRequest } from '@types/field';
+import type { CreateFieldRequest, Field, UpdateFieldRequest } from '@shared/field';
 import type { IFieldsRepository } from '@netlify/fields/IFieldsRepository';
 
 function transformField(drizzleField: any): Field {

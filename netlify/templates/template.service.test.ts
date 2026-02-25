@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import type { Template } from '@/types/index';
 import { TemplateService } from '@netlify/templates/template.service';
-import type { CreateFieldRequest, Field } from '@types/field';
+import type { CreateFieldRequest, Field } from '@shared/field';
 
 const mockBlobsService = {
   uploadTemplate: mock<(blobKey: string, arrayBuffer: ArrayBuffer) => Promise<void>>((blobKey: string, arrayBuffer: ArrayBuffer) => Promise.resolve()),

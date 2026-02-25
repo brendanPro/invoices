@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@/types/index';
 import { AppError } from '@netlify/lib/errors';
+import { HttpStatus } from '@shared/http-status';
 
 export enum HttpMethod {
   GET = 'GET',
@@ -25,15 +26,12 @@ export class HttpHandler {
     'Content-Type': 'application/json',
   };
 
-  /**
-   * Return a binary response with optional CORS and custom headers
-   */
   static binary(
     data: BodyInit | null,
     contentType: string,
     options: HttpResponseOptions = {},
   ): Response {
-    const { status = 200, headers = {}, cors = true } = options;
+    const { status = HttpStatus.OK, headers = {}, cors = true } = options;
     const customHeaders: Record<string, string> = {
       'Content-Type': contentType,
       ...headers,
@@ -44,9 +42,6 @@ export class HttpHandler {
     });
   }
 
-  /**
-   * Return a PDF response with common headers
-   */
   static pdf(data: BodyInit | null, filename: string, options: HttpResponseOptions = {}): Response {
     const cacheHeaders: Record<string, string> = {
       'Content-Disposition': `inline; filename="${filename}.pdf"`,
@@ -62,11 +57,8 @@ export class HttpHandler {
     return this.binary(data, 'application/pdf', merged);
   }
 
-  /**
-   * Create a successful response
-   */
   static success<T = any>(data: T, options: HttpResponseOptions = {}): Response {
-    const { status = 200, headers = {}, cors = true } = options;
+    const { status = HttpStatus.OK, headers = {}, cors = true } = options;
 
     const response: ApiResponse<T> = {
       success: true,
@@ -79,12 +71,9 @@ export class HttpHandler {
     });
   }
 
-  /**
-   * Create an error response
-   */
   static error(
     error: string | Error,
-    status: number = 500,
+    status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
     options: HttpResponseOptions = {},
   ): Response {
     const { headers = {}, cors = true } = options;
@@ -102,26 +91,17 @@ export class HttpHandler {
     });
   }
 
-  /**
-   * Create a validation error response
-   */
   static validationError(message: string, options: HttpResponseOptions = {}): Response {
-    return this.error(message, 400, options);
+    return this.error(message, HttpStatus.BAD_REQUEST, options);
   }
 
-  /**
-   * Create a not found error response
-   */
   static notFound(
     message: string = 'Resource not found',
     options: HttpResponseOptions = {},
   ): Response {
-    return this.error(message, 404, options);
+    return this.error(message, HttpStatus.NOT_FOUND, options);
   }
 
-  /**
-   * Create a method not allowed error response
-   */
   static methodNotAllowed(
     allowedMethods: string[] = ['GET', 'POST', 'PUT', 'DELETE'],
     options: HttpResponseOptions = {},
@@ -139,79 +119,55 @@ export class HttpHandler {
     };
 
     return new Response(JSON.stringify(response), {
-      status: 405,
+      status: HttpStatus.METHOD_NOT_ALLOWED,
       headers: this.buildHeaders(customHeaders, cors),
     });
   }
 
-  /**
-   * Create a CORS preflight response
-   */
   static corsPreflight(options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
 
     return new Response('', {
-      status: 200,
+      status: HttpStatus.OK,
       headers: this.buildHeaders(headers, cors),
     });
   }
 
-  /**
-   * Create a created response (201)
-   */
   static created<T = any>(data: T, options: HttpResponseOptions = {}): Response {
-    return this.success(data, { ...options, status: 201 });
+    return this.success(data, { ...options, status: HttpStatus.CREATED });
   }
 
-  /**
-   * Create a no content response (204)
-   */
   static noContent(options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
 
     return new Response('', {
-      status: 204,
+      status: HttpStatus.NO_CONTENT,
       headers: this.buildHeaders(headers, cors),
     });
   }
 
-  /**
-   * Create a bad request response (400)
-   */
   static badRequest(message: string = 'Bad request', options: HttpResponseOptions = {}): Response {
-    return this.error(message, 400, options);
+    return this.error(message, HttpStatus.BAD_REQUEST, options);
   }
 
-  /**
-   * Create an internal server error response (500)
-   */
   static internalError(
     message: string = 'Internal server error',
     options: HttpResponseOptions = {},
   ): Response {
-    return this.error(message, 500, options);
+    return this.error(message, HttpStatus.INTERNAL_SERVER_ERROR, options);
   }
 
-  /**
-   * Create an unauthorized response (401)
-   */
   static unauthorized(
     message: string = 'Unauthorized',
     options: HttpResponseOptions = {},
   ): Response {
-    return this.error(message, 401, options);
+    return this.error(message, HttpStatus.UNAUTHORIZED, options);
   }
 
-  /**
-   * Create a forbidden response (403)
-   */
   static forbidden(message: string = 'Forbidden', options: HttpResponseOptions = {}): Response {
-    return this.error(message, 403, options);
+    return this.error(message, HttpStatus.FORBIDDEN, options);
   }
 
-  /**
-   * Create a redirect response (302)
-   */
   static redirect(url: string, options: HttpResponseOptions = {}): Response {
     const { headers = {}, cors = true } = options;
 
@@ -225,18 +181,10 @@ export class HttpHandler {
     });
   }
 
-  /**
-   * Map an AppError to the appropriate HTTP response
-   */
   static fromAppError(error: AppError, options: HttpResponseOptions = {}): Response {
     return this.error(error.message, error.statusCode, options);
   }
 
-  /**
-   * Handle async operations with automatic error handling.
-   * AppError instances are mapped to their HTTP status code;
-   * unexpected errors fall back to 500.
-   */
   static async handleAsync<T>(
     operation: () => Promise<T>,
     errorMessage: string = 'Operation failed',
@@ -254,9 +202,6 @@ export class HttpHandler {
     }
   }
 
-  /**
-   * Build headers with optional CORS
-   */
   private static buildHeaders(
     customHeaders: Record<string, string> = {},
     cors: boolean = true,
@@ -266,9 +211,6 @@ export class HttpHandler {
       : { 'Content-Type': 'application/json', ...customHeaders };
   }
 
-  /**
-   * Validate request method
-   */
   static validateMethod(request: Request, allowedMethods: string[]): Response | null {
     if (!allowedMethods.includes(request.method)) {
       return this.methodNotAllowed(allowedMethods);
@@ -276,9 +218,6 @@ export class HttpHandler {
     return null;
   }
 
-  /**
-   * Handle CORS preflight requests
-   */
   static handleCors(request: Request): Response | null {
     if (request.method === 'OPTIONS') {
       return this.corsPreflight();
@@ -286,9 +225,6 @@ export class HttpHandler {
     return null;
   }
 
-  /**
-   * Extract JSON body with error handling
-   */
   static async extractJson<T = any>(request: Request): Promise<T> {
     try {
       return await request.json();
@@ -297,17 +233,11 @@ export class HttpHandler {
     }
   }
 
-  /**
-   * Extract query parameters
-   */
   static extractQueryParams(request: Request): URLSearchParams {
     const url = new URL(request.url);
     return url.searchParams;
   }
 
-  /**
-   * Validate required fields in request body
-   */
   static validateRequiredFields(
     body: Record<string, any>,
     requiredFields: string[],
@@ -320,9 +250,6 @@ export class HttpHandler {
     return null;
   }
 
-  /**
-   * Validate field types
-   */
   static validateFieldTypes(
     body: Record<string, any>,
     fieldTypes: Record<string, string>,
