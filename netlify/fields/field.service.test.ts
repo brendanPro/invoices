@@ -39,6 +39,7 @@ describe('FieldService', () => {
           font_size: 12,
           field_type: 'text',
           color: '#000000',
+          group_id: null,
           created_at: '2024-01-01T00:00:00.000Z',
         },
         {
@@ -52,6 +53,7 @@ describe('FieldService', () => {
           font_size: 12,
           field_type: 'number',
           color: '#000000',
+          group_id: null,
           created_at: '2024-01-01T00:00:00.000Z',
         },
       ];
@@ -93,7 +95,8 @@ describe('FieldService', () => {
         id: 1,
         ...fieldData,
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
 
       mockFieldsRepository.findByTemplateIdAndName.mockResolvedValue(null);
@@ -134,7 +137,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
 
       mockFieldsRepository.findByTemplateIdAndName.mockResolvedValue(existingField);
@@ -165,7 +169,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
 
       mockFieldsRepository.findById.mockResolvedValue(mockField);
@@ -206,7 +211,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
 
       mockFieldsRepository.findById.mockResolvedValue(mockField);
@@ -234,7 +240,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'New Name',
@@ -274,7 +281,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'Test Field', // Same name
@@ -310,7 +318,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         x_position: 50,
@@ -361,7 +370,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'New Name',
@@ -390,7 +400,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'Existing Name',
@@ -406,7 +417,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
 
       mockFieldsRepository.findById.mockResolvedValue(existingField);
@@ -436,7 +448,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         font_size: 14,
@@ -465,7 +478,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'Test Field', // Same name as existing
@@ -501,7 +515,8 @@ describe('FieldService', () => {
         font_size: 12,
         field_type: 'text',
         color: '#000000',
-        created_at: '2024-01-01T00:00:00.000Z',
+        group_id: null,
+          created_at: '2024-01-01T00:00:00.000Z',
       };
       const updateData: UpdateFieldRequest = {
         field_name: 'New Name',

@@ -47,4 +47,5 @@ export interface FieldData {
   width: number;
   height: number;
   color?: string;
+  group_id?: number | null;
 }

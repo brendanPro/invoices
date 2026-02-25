@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TemplateField, FieldBounds } from '@/types/template-field';
+import type { TemplateFieldGroup } from '@/types/template-group';
 import { API_ENDPOINTS, authenticatedFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearch } from '@tanstack/react-router';
@@ -15,19 +16,22 @@ if (GlobalWorkerOptions && GlobalWorkerOptions.workerSrc) {
 interface InteractivePdfViewerProps {
   templateId: number;
   fields: TemplateField[];
+  groups?: TemplateFieldGroup[];
   isDrawingMode: boolean;
   pendingField?: FieldBounds;
-  selectedFieldId?: number; // ID of the field being edited
-  selectedField?: TemplateField; // Full field object for editing
+  selectedFieldId?: number;
+  selectedField?: TemplateField;
   onFieldCreate: (bounds: FieldBounds) => void;
   onDrawingComplete: () => void;
   onPendingFieldUpdate?: (bounds: FieldBounds) => void;
-  onSelectedFieldUpdate?: (bounds: FieldBounds) => void; // Callback to update selected field bounds
+  onSelectedFieldUpdate?: (bounds: FieldBounds) => void;
+  onGroupMove?: (groupId: number, dx: number, dy: number) => void;
 }
 
 export function InteractivePdfViewer({
   templateId,
   fields,
+  groups = [],
   isDrawingMode,
   pendingField,
   selectedFieldId,
@@ -36,6 +40,7 @@ export function InteractivePdfViewer({
   onDrawingComplete,
   onPendingFieldUpdate,
   onSelectedFieldUpdate,
+  onGroupMove,
 }: InteractivePdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
@@ -62,7 +67,13 @@ export function InteractivePdfViewer({
     startX: number;
     startY: number;
     startBounds: FieldBounds;
-    isPending: boolean; // true for pending field, false for selected field
+    isPending: boolean;
+  }>(null);
+
+  const [draggingGroup, setDraggingGroup] = useState<null | {
+    groupId: number;
+    startX: number;
+    startY: number;
   }>(null);
 
   const { user } = useAuth();
@@ -176,6 +187,30 @@ export function InteractivePdfViewer({
     }
   };
 
+  // Compute bounding box (in stage px) for each group from its member fields
+  const groupBoundingBoxes = useMemo(() => {
+    return groups
+      .map((group) => {
+        const members = fields.filter((f) => f.group_id === group.id);
+        if (members.length === 0) return null;
+
+        const xs = members.map((f) => parseFloat(String(f.x_position)) * scale);
+        const ys = members.map((f) => parseFloat(String(f.y_position)) * scale);
+        const x2s = members.map((f) => (parseFloat(String(f.x_position)) + parseFloat(String(f.width))) * scale);
+        const y2s = members.map((f) => (parseFloat(String(f.y_position)) + parseFloat(String(f.height))) * scale);
+
+        const PADDING = 8;
+        return {
+          group,
+          x: Math.min(...xs) - PADDING,
+          y: Math.min(...ys) - PADDING,
+          width: Math.max(...x2s) - Math.min(...xs) + PADDING * 2,
+          height: Math.max(...y2s) - Math.min(...ys) + PADDING * 2,
+        };
+      })
+      .filter(Boolean) as { group: TemplateFieldGroup; x: number; y: number; width: number; height: number }[];
+  }, [groups, fields, scale]);
+
   const handleMouseDown = (e: any) => {
     // Check if clicking on a resize handle for pending field
     if (e.target.name()?.startsWith('resize-handle-pending-') && pendingField) {
@@ -237,6 +272,21 @@ export function InteractivePdfViewer({
       return;
     }
 
+    // Check if clicking on a group bounding box (for group drag)
+    if (!isDrawingMode && !pendingField && !selectedFieldBounds && onGroupMove) {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (pos) {
+        const hit = groupBoundingBoxes.find(
+          (bb) => pos.x >= bb.x && pos.x <= bb.x + bb.width && pos.y >= bb.y && pos.y <= bb.y + bb.height,
+        );
+        if (hit) {
+          e.cancelBubble = true;
+          setDraggingGroup({ groupId: hit.group.id, startX: pos.x, startY: pos.y });
+          return;
+        }
+      }
+    }
+
     // Don't start drawing if we're resizing, dragging, or if there's a pending/selected field
     if (!isDrawingMode || pendingField || selectedFieldBounds) return;
     const pos = e.target.getStage().getPointerPosition();
@@ -245,6 +295,12 @@ export function InteractivePdfViewer({
   };
 
   const handleMouseMove = (e: any) => {
+    // Group drag: just track movement (visual feedback handled by state)
+    if (draggingGroup) {
+      // No visual needed during drag; commit on mouseup
+      return;
+    }
+
     // Handle dragging the pending field
     if (dragging && dragging.isPending && pendingField && onPendingFieldUpdate) {
       const pos = e.target.getStage().getPointerPosition();
@@ -483,7 +539,20 @@ export function InteractivePdfViewer({
     setDrawing({ ...drawing, x, y, w, h });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: any) => {
+    if (draggingGroup && onGroupMove) {
+      const pos = e.target?.getStage()?.getPointerPosition();
+      if (pos) {
+        const dx = (pos.x - draggingGroup.startX) / scale;
+        const dy = (pos.y - draggingGroup.startY) / scale;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          onGroupMove(draggingGroup.groupId, dx, dy);
+        }
+      }
+      setDraggingGroup(null);
+      return;
+    }
+
     if (dragging) {
       setDragging(null);
       return;
@@ -530,7 +599,7 @@ export function InteractivePdfViewer({
               height={stageSize.height}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
+              onMouseUp={(e) => handleMouseUp(e)}
               style={{ cursor: resizing ? 'move' : isDrawingMode ? 'crosshair' : 'default' }}
             >
               <Layer>
@@ -543,6 +612,51 @@ export function InteractivePdfViewer({
                     height={stageSize.height}
                   />
                 )}
+
+                {/* Group bounding boxes */}
+                {groupBoundingBoxes.map(({ group, x, y, width, height }, idx) => {
+                  const groupColors = [
+                    { stroke: '#9333ea', fill: 'rgba(147,51,234,0.05)' },
+                    { stroke: '#0d9488', fill: 'rgba(13,148,136,0.05)' },
+                    { stroke: '#ec4899', fill: 'rgba(236,72,153,0.05)' },
+                    { stroke: '#6366f1', fill: 'rgba(99,102,241,0.05)' },
+                    { stroke: '#ca8a04', fill: 'rgba(202,138,4,0.05)' },
+                  ];
+                  const color = groupColors[idx % groupColors.length];
+                  const isDragged = draggingGroup?.groupId === group.id;
+                  return (
+                    <React.Fragment key={`group-${group.id}`}>
+                      <Rect
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
+                        fill={isDragged ? color.fill.replace('0.05', '0.12') : color.fill}
+                        stroke={color.stroke}
+                        strokeWidth={1.5}
+                        dash={[6, 3]}
+                        listening={!isDrawingMode && !pendingField && !selectedField}
+                        onMouseEnter={(ev) => {
+                          const container = ev.target.getStage()?.container();
+                          if (container) container.style.cursor = 'grab';
+                        }}
+                        onMouseLeave={(ev) => {
+                          const container = ev.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                      />
+                      <Text
+                        x={x + 4}
+                        y={y - 18}
+                        text={group.name}
+                        fontSize={11}
+                        fontStyle="bold"
+                        fill={color.stroke}
+                        listening={false}
+                      />
+                    </React.Fragment>
+                  );
+                })}
 
                 {/* Render all fields except the selected one (it will be rendered separately with edit controls) */}
                 {fields.filter(f => f.id !== selectedFieldId).map((f) => {
