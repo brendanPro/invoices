@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Template } from '@/types/index';
 import type { TemplateField } from '@/types/template-field';
+import type { TemplateFieldGroup } from '@/types/template-group';
 import { useTemplateFields } from '@/hooks/useTemplateFields';
+import { useTemplateGroups } from '@/hooks/useTemplateGroups';
 import { useSaveInvoiceData, useGenerateInvoice, downloadBlob } from '@/hooks/useInvoices';
 
 interface InvoiceDataFormProps {
@@ -16,16 +18,91 @@ interface InvoiceDataFormProps {
   onInvoiceGenerated?: (pdfUrl: string) => void;
 }
 
+interface FieldInputProps {
+  field: TemplateField;
+  register: ReturnType<typeof useForm>['register'];
+  errors: ReturnType<typeof useForm>['formState']['errors'];
+}
+
+function FieldInput({ field, register, errors }: FieldInputProps) {
+  const label = field.field_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={field.field_name}>{label}</Label>
+      {field.field_type === 'date' ? (
+        <Input id={field.field_name} type="date" {...register(field.field_name)} />
+      ) : field.field_type === 'number' ? (
+        <Input
+          id={field.field_name}
+          type="number"
+          step="0.01"
+          {...register(field.field_name, { valueAsNumber: true })}
+        />
+      ) : (
+        <Input id={field.field_name} type="text" {...register(field.field_name)} />
+      )}
+      {errors[field.field_name] && (
+        <p className="text-sm text-red-500">{errors[field.field_name]?.message as string}</p>
+      )}
+    </div>
+  );
+}
+
+interface FieldGroupSectionProps {
+  group: TemplateFieldGroup;
+  fields: TemplateField[];
+  register: ReturnType<typeof useForm>['register'];
+  errors: ReturnType<typeof useForm>['formState']['errors'];
+}
+
+function FieldGroupSection({ group, fields, register, errors }: FieldGroupSectionProps) {
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+        <span className="text-sm font-semibold text-gray-700">{group.name}</span>
+        <span className="text-xs text-gray-400 bg-gray-200 rounded-full px-2 py-0.5">
+          {fields.length} champ{fields.length > 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {fields.map((field) => (
+          <FieldInput key={field.id} field={field} register={register} errors={errors} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFormProps) {
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch template fields using React Query hook
+  // Fetch template fields and groups using React Query hooks
   const templateId = useMemo(() => (template ? Number(template.id) : 0), [template]);
   const {
     data: fields = [],
-    isLoading: loading,
+    isLoading: fieldsLoading,
     error: fieldsError,
   } = useTemplateFields(templateId);
+  const { data: groups = [], isLoading: groupsLoading } = useTemplateGroups(templateId);
+
+  const loading = fieldsLoading || groupsLoading;
+
+  const { groupedFields, ungroupedFields } = useMemo(() => {
+    const grouped = new Map<number, TemplateField[]>();
+    const ungrouped: TemplateField[] = [];
+
+    fields.forEach((field) => {
+      if (field.group_id != null) {
+        const existing = grouped.get(field.group_id) ?? [];
+        grouped.set(field.group_id, [...existing, field]);
+      } else {
+        ungrouped.push(field);
+      }
+    });
+
+    return { groupedFields: grouped, ungroupedFields: ungrouped };
+  }, [fields]);
 
   // Invoice mutations
   const saveInvoiceMutation = useSaveInvoiceData();
@@ -156,35 +233,41 @@ export function InvoiceDataForm({ template, onInvoiceGenerated }: InvoiceDataFor
             No fields configured for this template. Please configure fields first.
           </p>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fields.map((field) => (
-                <div key={field.id} className="space-y-2">
-                  <Label htmlFor={field.field_name}>
-                    {field.field_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </Label>
-
-                  {field.field_type === 'date' ? (
-                    <Input id={field.field_name} type="date" {...register(field.field_name)} />
-                  ) : field.field_type === 'number' ? (
-                    <Input
-                      id={field.field_name}
-                      type="number"
-                      step="0.01"
-                      {...register(field.field_name, { valueAsNumber: true })}
-                    />
-                  ) : (
-                    <Input id={field.field_name} type="text" {...register(field.field_name)} />
-                  )}
-
-                  {errors[field.field_name] && (
-                    <p className="text-sm text-red-500">
-                      {errors[field.field_name]?.message as string}
-                    </p>
-                  )}
-                </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {groups
+              .filter((group) => groupedFields.has(group.id))
+              .map((group) => (
+                <FieldGroupSection
+                  key={group.id}
+                  group={group}
+                  fields={groupedFields.get(group.id) ?? []}
+                  register={register}
+                  errors={errors}
+                />
               ))}
-            </div>
+
+            {ungroupedFields.length > 0 && (
+              <div className="space-y-3">
+                {groups.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Sans groupe
+                    </span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ungroupedFields.map((field) => (
+                    <FieldInput
+                      key={field.id}
+                      field={field}
+                      register={register}
+                      errors={errors}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Button type="submit" disabled={isProcessing} className="w-full">
               {isProcessing
