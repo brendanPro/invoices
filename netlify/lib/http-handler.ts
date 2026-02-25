@@ -1,4 +1,5 @@
 import type { ApiResponse } from '@/types/index';
+import { AppError } from '@netlify/lib/errors';
 
 export enum HttpMethod {
   GET = 'GET',
@@ -225,7 +226,16 @@ export class HttpHandler {
   }
 
   /**
-   * Handle async operations with automatic error handling
+   * Map an AppError to the appropriate HTTP response
+   */
+  static fromAppError(error: AppError, options: HttpResponseOptions = {}): Response {
+    return this.error(error.message, error.statusCode, options);
+  }
+
+  /**
+   * Handle async operations with automatic error handling.
+   * AppError instances are mapped to their HTTP status code;
+   * unexpected errors fall back to 500.
    */
   static async handleAsync<T>(
     operation: () => Promise<T>,
@@ -236,6 +246,9 @@ export class HttpHandler {
       const result = await operation();
       return this.success(result, options);
     } catch (error) {
+      if (error instanceof AppError) {
+        return this.fromAppError(error, options);
+      }
       console.error('HttpHandler: Async operation failed:', error);
       return this.internalError(errorMessage, options);
     }
