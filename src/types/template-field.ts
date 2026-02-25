@@ -1,6 +1,7 @@
 export interface TemplateField {
   id: number;
   template_id: number;
+  group_id: number | null;
   field_name: string;
   x_position: string; // decimal as string
   y_position: string; // decimal as string
@@ -14,6 +15,7 @@ export interface TemplateField {
 
 export interface CreateTemplateFieldRequest {
   template_id: number;
+  group_id?: number | null;
   field_name: string;
   x_position: number;
   y_position: number;
