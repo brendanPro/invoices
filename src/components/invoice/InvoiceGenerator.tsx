@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TemplateList } from '../templates/TemplateList';
 import { InvoiceList } from './InvoiceList';
-import { ConfigurationForm } from './ConfigurationForm';
 import { InvoiceDataForm } from './InvoiceDataForm';
 import { useGenerateInvoice, downloadBlob } from '@/hooks/useInvoices';
 import type { Template } from '@/types/index';
@@ -18,17 +17,21 @@ export function InvoiceGenerator() {
   const handleTemplateSelected = (template: Template) => {
     setSelectedTemplate(template);
     setGeneratedPdfUrl(null);
+    setSelectedInvoice(null);
   };
 
   const handleTemplateDeleted = () => {
     if (selectedTemplate) {
       setSelectedTemplate(null);
       setGeneratedPdfUrl(null);
+      setSelectedInvoice(null);
     }
   };
 
-  const handleConfigurationSaved = () => {
-    console.log('Configuration saved successfully');
+  const handleBackToTemplates = () => {
+    setSelectedTemplate(null);
+    setGeneratedPdfUrl(null);
+    setSelectedInvoice(null);
   };
 
   const handleInvoiceGenerated = (pdfUrl: string) => {
@@ -37,9 +40,15 @@ export function InvoiceGenerator() {
   };
 
   const handleInvoiceSelected = async (invoice: Invoice) => {
+    if (selectedInvoice?.id === invoice.id) {
+      setSelectedInvoice(null);
+      setGeneratedPdfUrl(null);
+      return;
+    }
+
     setSelectedInvoice(invoice);
     setGeneratedPdfUrl(null);
-    
+
     try {
       const pdfBlob = await generateMutation.mutateAsync(invoice.id);
       const url = URL.createObjectURL(pdfBlob);
@@ -63,8 +72,13 @@ export function InvoiceGenerator() {
       });
   };
 
+  const handleClosePdfViewer = () => {
+    setSelectedInvoice(null);
+    setGeneratedPdfUrl(null);
+  };
+
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -83,7 +97,6 @@ export function InvoiceGenerator() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header - Title and Description */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2">Invoice Generator</h1>
         <p className="text-gray-600">
@@ -91,126 +104,100 @@ export function InvoiceGenerator() {
         </p>
       </div>
 
-      {/* Main Content - Template Management and Configuration */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Template Management */}
-        <div className="space-y-6">
-          <TemplateList
-            onTemplateSelect={handleTemplateSelected}
-            onTemplateDeleted={handleTemplateDeleted}
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Left Column — Template list or Invoice data form */}
+        <div className="space-y-4">
+          {selectedTemplate === null ? (
+            <TemplateList
+              onTemplateSelect={handleTemplateSelected}
+              onTemplateDeleted={handleTemplateDeleted}
+            />
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToTemplates}
+                className="flex items-center gap-1 text-gray-500 hover:text-gray-800 -ml-1"
+              >
+                ← Retour aux templates
+              </Button>
+              <InvoiceDataForm
+                template={selectedTemplate}
+                onInvoiceGenerated={handleInvoiceGenerated}
+              />
+            </>
+          )}
         </div>
 
-        {/* Middle Column - Configuration and Generation */}
-        <div className="space-y-6">
-          <InvoiceDataForm
-            template={selectedTemplate}
-            onInvoiceGenerated={handleInvoiceGenerated}
-          />
-        </div>
-
-        {/* Right Column - Invoice List */}
-        <div className="space-y-6">
+        {/* Right Column — Invoice list */}
+        <div className="space-y-4">
           <InvoiceList onInvoiceSelected={handleInvoiceSelected} />
         </div>
       </div>
 
-      {/* Generated PDF Display */}
-      {generatedPdfUrl && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>
-              {selectedInvoice 
-                ? `Invoice #${selectedInvoice.id}` 
-                : 'Generated Invoice'}
+      {/* PDF Viewer — full width, below the grid */}
+      {(generatedPdfUrl || generateMutation.isPending) && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">
+              {selectedInvoice ? `Facture #${selectedInvoice.id}` : 'Facture générée'}
             </CardTitle>
+            <Button variant="ghost" size="sm" onClick={handleClosePdfViewer}>
+              ✕
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {selectedInvoice ? (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600">
-                    Template: {selectedInvoice.template_name || `Template #${selectedInvoice.template_id}`}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Generated: {formatDate(selectedInvoice.generated_at)}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-green-600 font-medium">Invoice generated successfully!</p>
-              )}
-
-              {generateMutation.isPending && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading invoice...</p>
-                  </div>
-                </div>
-              )}
-
-              {generateMutation.isError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-4">
-                  <p className="text-sm text-red-600">
-                    {generateMutation.error instanceof Error
-                      ? generateMutation.error.message
-                      : 'Failed to load invoice'}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                {selectedInvoice ? (
-                  <>
-                    <Button
-                      onClick={handleDownloadCurrentInvoice}
-                      disabled={!generatedPdfUrl}
-                    >
-                      Download Invoice
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedInvoice(null);
-                        setGeneratedPdfUrl(null);
-                      }}
-                    >
-                      Close
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <a
-                      href={generatedPdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                      View PDF
-                    </a>
-                    <a
-                      href={generatedPdfUrl}
-                      download={`invoice-${Date.now()}.pdf`}
-                      className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      Download PDF
-                    </a>
-                  </>
-                )}
+          <CardContent className="space-y-3">
+            {selectedInvoice && (
+              <div>
+                <p className="text-sm text-gray-600">
+                  Template : {selectedInvoice.template_name || `#${selectedInvoice.template_id}`}
+                </p>
+                <p className="text-xs text-gray-400">
+                  Générée le {formatDate(selectedInvoice.generated_at)}
+                </p>
               </div>
+            )}
 
-              {generatedPdfUrl && !generateMutation.isPending && (
-                <div className="mt-4">
-                  <iframe
-                    src={generatedPdfUrl}
-                    width="100%"
-                    height="600"
-                    className="border rounded-lg"
-                    title={selectedInvoice ? `Invoice #${selectedInvoice.id}` : 'Generated Invoice'}
-                  />
+            {!selectedInvoice && generatedPdfUrl && (
+              <p className="text-sm text-green-600 font-medium">
+                Facture générée avec succès !
+              </p>
+            )}
+
+            {generateMutation.isPending && (
+              <div className="flex items-center justify-center py-6">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Chargement...</p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {generateMutation.isError && (
+              <p className="text-sm text-red-600">
+                {generateMutation.error instanceof Error
+                  ? generateMutation.error.message
+                  : 'Erreur lors du chargement'}
+              </p>
+            )}
+
+            {generatedPdfUrl && !generateMutation.isPending && (
+              <>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleDownloadCurrentInvoice}>
+                    Télécharger
+                  </Button>
+                </div>
+                <iframe
+                  src={generatedPdfUrl}
+                  width="100%"
+                  height="700"
+                  className="border rounded-lg mt-2"
+                  title={selectedInvoice ? `Facture #${selectedInvoice.id}` : 'Facture générée'}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
       )}
