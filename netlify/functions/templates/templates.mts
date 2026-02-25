@@ -53,8 +53,11 @@ export default async (req: Request) => {
   }
 };
 
+// URL pattern: /api/templates/:templateId/fields/...
+const FIELDS_SEGMENT_INDEX = 4;
+
 const shouldForwardToFields = async (req: Request) => {
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/');
-  return pathParts[4] === 'fields';
+  return pathParts[FIELDS_SEGMENT_INDEX] === 'fields';
 };
