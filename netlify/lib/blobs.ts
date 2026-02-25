@@ -1,12 +1,7 @@
 import { getStore } from '@netlify/blobs';
 
-// Get the templates store
 export function getTemplatesStore() {
-  // @ts-ignore
-  return getStore('templates',{
-    siteId: "REDACTED",
-    token: "REDACTED"
-  });
+  return getStore('templates');
 }
 
 // Blob storage utility functions
