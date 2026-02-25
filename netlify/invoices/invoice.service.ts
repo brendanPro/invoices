@@ -4,6 +4,7 @@ import type { Invoice, TemplateField, TemplateWithFields } from '@/types/index';
 import type { IInvoicesRepository } from '@netlify/invoices/IInvoicesRepository';
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
 import type { IInvoiceService, InvoiceWithTemplate } from '@netlify/invoices/IInvoiceService';
+import { NotFoundError } from '@netlify/lib/errors';
 
 export class InvoiceService implements IInvoiceService {
   private readonly repository: IInvoicesRepository;
@@ -13,18 +14,15 @@ export class InvoiceService implements IInvoiceService {
     this.templateService = templateService;
   }
 
-  async createInvoice(templateId: number, invoiceData: Record<string, any>): Promise<Invoice> {
+  async createInvoice(templateId: number, invoiceData: Record<string, any>, userEmail: string): Promise<Invoice> {
     try {
-      const templateExists = await this.templateService.templateExists(templateId);
-      if (!templateExists) throw new Error('Template not found');
+      const templateExists = await this.templateService.templateExists(templateId, userEmail);
+      if (!templateExists) throw new NotFoundError('Template not found');
 
-      const invoice = await this.repository.create(templateId, invoiceData);
-      return invoice;
+      return await this.repository.create(templateId, invoiceData);
     } catch (error) {
+      if (error instanceof NotFoundError) throw error;
       console.error('Service: Error creating invoice:', error);
-      if (error instanceof Error && error.message === 'Template not found') {
-        throw error;
-      }
       throw new Error('Failed to create invoice');
     }
   }
@@ -32,11 +30,11 @@ export class InvoiceService implements IInvoiceService {
   async getInvoiceWithTemplate(invoiceId: number, userEmail: string): Promise<InvoiceWithTemplate> {
     try {
       const invoice = await this.repository.findById(invoiceId);
-      if (!invoice) throw new Error('Invoice not found');
+      if (!invoice) throw new NotFoundError('Invoice not found');
 
       const template = await this.templateService.getTemplateByIdWithFields(invoice.template_id, userEmail);
-      if (!template) throw new Error('Template not found');
-      if (template.user_email !== userEmail) throw new Error('Invoice not found');
+      if (!template) throw new NotFoundError('Invoice not found');
+      if (template.user_email !== userEmail) throw new NotFoundError('Invoice not found');
 
       let pdfBlob: ArrayBuffer | null = null;
       let pdfBlobKey: string | undefined = invoice.pdf_blob_key;
@@ -71,13 +69,8 @@ export class InvoiceService implements IInvoiceService {
         pdfBlob,
       };
     } catch (error) {
+      if (error instanceof NotFoundError) throw error;
       console.error('Service: Error getting invoice with template:', error);
-      if (
-        error instanceof Error &&
-        (error.message === 'Invoice not found' || error.message === 'Template not found')
-      ) {
-        throw error;
-      }
       throw new Error('Failed to retrieve invoice data');
     }
   }
@@ -94,18 +87,10 @@ export class InvoiceService implements IInvoiceService {
   async deleteInvoice(invoiceId: number, userEmail: string): Promise<void> {
     try {
       const invoice = await this.repository.findById(invoiceId);
-      if (!invoice) {
-        throw new Error('Invoice not found');
-      }
+      if (!invoice) throw new NotFoundError('Invoice not found');
 
       const template = await this.templateService.getTemplateById(invoice.template_id, userEmail);
-      if (!template) {
-        throw new Error('Template not found');
-      }
-
-      if (template.user_email !== userEmail) {
-        throw new Error('Invoice not found');
-      }
+      if (!template || template.user_email !== userEmail) throw new NotFoundError('Invoice not found');
 
       if (invoice.pdf_blob_key) {
         try {
@@ -119,13 +104,8 @@ export class InvoiceService implements IInvoiceService {
 
       await this.repository.delete(invoiceId);
     } catch (error) {
+      if (error instanceof NotFoundError) throw error;
       console.error('Service: Error deleting invoice:', error);
-      if (
-        error instanceof Error &&
-        (error.message === 'Invoice not found' || error.message === 'Template not found')
-      ) {
-        throw error;
-      }
       throw new Error('Failed to delete invoice');
     }
   }

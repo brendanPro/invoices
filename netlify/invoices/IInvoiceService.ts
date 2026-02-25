@@ -6,7 +6,7 @@ export interface InvoiceWithTemplate {
 }
 
 export interface IInvoiceService {
-  createInvoice(templateId: number, invoiceData: Record<string, any>): Promise<Invoice>;
+  createInvoice(templateId: number, invoiceData: Record<string, any>, userEmail: string): Promise<Invoice>;
   getAllInvoices(userEmail: string): Promise<Invoice[]>;
   deleteInvoice(invoiceId: number, userEmail: string): Promise<void>;
   getInvoiceWithTemplate(invoiceId: number, userEmail: string): Promise<InvoiceWithTemplate>;
