@@ -28,10 +28,21 @@ export const templates = pgTable('templates', {
   userEmailIdx: index('idx_templates_user_email').on(table.user_email),
 }));
 
+// Template field groups table
+export const templateFieldGroups = pgTable('template_field_groups', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  template_id: integer('template_id').notNull().references(() => templates.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  templateIdIdx: index('idx_template_field_groups_template_id').on(table.template_id),
+}));
+
 // Template fields table
 export const templateFields = pgTable('template_fields', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   template_id: integer('template_id').notNull().references(() => templates.id, { onDelete: 'cascade' }),
+  group_id: integer('group_id').references(() => templateFieldGroups.id, { onDelete: 'set null' }),
   field_name: varchar('field_name', { length: 255 }).notNull(),
   x_position: decimal('x_position', { precision: 10, scale: 2 }).notNull(),
   y_position: decimal('y_position', { precision: 10, scale: 2 }).notNull(),
@@ -39,7 +50,7 @@ export const templateFields = pgTable('template_fields', {
   height: decimal('height', { precision: 10, scale: 2 }).notNull(),
   font_size: decimal('font_size', { precision: 5, scale: 2 }).default('12'),
   field_type: fieldTypeEnum('field_type').default('text'),
-  color: varchar('color', { length: 7 }).default('#000000'), // Hex color format: #000000
+  color: varchar('color', { length: 7 }).default('#000000'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   templateIdIdx: index('idx_template_fields_template_id').on(table.template_id),
@@ -61,13 +72,26 @@ export const invoices = pgTable('invoices', {
 // Define relations
 export const templatesRelations = relations(templates, ({ many }) => ({
   fields: many(templateFields),
+  groups: many(templateFieldGroups),
   invoices: many(invoices),
+}));
+
+export const templateFieldGroupsRelations = relations(templateFieldGroups, ({ one, many }) => ({
+  template: one(templates, {
+    fields: [templateFieldGroups.template_id],
+    references: [templates.id],
+  }),
+  fields: many(templateFields),
 }));
 
 export const templateFieldsRelations = relations(templateFields, ({ one }) => ({
   template: one(templates, {
     fields: [templateFields.template_id],
     references: [templates.id],
+  }),
+  group: one(templateFieldGroups, {
+    fields: [templateFields.group_id],
+    references: [templateFieldGroups.id],
   }),
 }));
 
@@ -81,6 +105,7 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
 // Export schema for Drizzle
 export const schema = {
   templates,
+  templateFieldGroups,
   templateFields,
   invoices,
   fieldTypeEnum,
@@ -89,6 +114,7 @@ export const schema = {
 // Export relations
 export const relationsSchema = {
   templatesRelations,
+  templateFieldGroupsRelations,
   templateFieldsRelations,
   invoicesRelations,
 };
