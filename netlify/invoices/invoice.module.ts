@@ -2,6 +2,7 @@ import type { ITemplateService } from "@netlify/templates/ITemplateService";
 import { InvoiceController } from "@netlify/invoices/invoice.controller";
 import { InvoiceService } from "@netlify/invoices/invoice.service";
 import { InvoicesRepository } from "@netlify/invoices/invoices.repository";
+import { PdfGeneratorService } from "@netlify/pdf/pdf-generator.service";
 
 export class InvoiceModule {
   private repository: InvoicesRepository;
@@ -10,7 +11,7 @@ export class InvoiceModule {
 
   constructor(templateService: ITemplateService) {
     this.repository = new InvoicesRepository();
-    this._service = new InvoiceService(this.repository, templateService);
+    this._service = new InvoiceService(this.repository, templateService, new PdfGeneratorService());
     this._controller = new InvoiceController(this._service);
   }
 

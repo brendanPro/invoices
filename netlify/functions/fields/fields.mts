@@ -11,6 +11,10 @@ const fieldModule = new FieldModule(templateService);
 const fieldController = fieldModule.controller;
 const ALLOWED_METHODS = [HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE, HttpMethod.OPTIONS];
 
+// URL pattern: /api/templates/:templateId/fields/:fieldId
+const TEMPLATE_ID_PATH_INDEX = 3;
+const FIELD_ID_PATH_INDEX = 5;
+
 export default async (req: Request) => {
   try {
     const corsResponse = HttpHandler.handleCors(req);
@@ -24,7 +28,7 @@ export default async (req: Request) => {
     const userEmail = authResult.user!.email;
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/');
-    const templateId = parseInt(pathParts[3]);
+    const templateId = parseInt(pathParts[TEMPLATE_ID_PATH_INDEX]);
 
     if (isNaN(templateId)) {
       return HttpHandler.badRequest('Invalid template ID');
@@ -43,14 +47,14 @@ export default async (req: Request) => {
         return fieldController.createTemplateField(req, templateId, userEmail);
 
       case HttpMethod.PUT:
-        const updateFieldId = parseInt(pathParts[5]);
+        const updateFieldId = parseInt(pathParts[FIELD_ID_PATH_INDEX]);
         if (isNaN(updateFieldId)) {
           return HttpHandler.badRequest('Invalid field ID');
         }
         return fieldController.updateTemplateField(req, templateId, updateFieldId, userEmail);
 
       case HttpMethod.DELETE:
-        const fieldId = parseInt(pathParts[5]);
+        const fieldId = parseInt(pathParts[FIELD_ID_PATH_INDEX]);
         if (isNaN(fieldId)) {
           return HttpHandler.badRequest('Invalid field ID');
         }

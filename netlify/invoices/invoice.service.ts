@@ -1,17 +1,24 @@
-import { PDFDocument, rgb } from 'pdf-lib';
 import { blobs } from '@netlify/lib/blobs';
-import type { Invoice, TemplateField, TemplateWithFields } from '@/types/index';
+import type { Invoice } from '@/types/index';
 import type { IInvoicesRepository } from '@netlify/invoices/IInvoicesRepository';
 import type { ITemplateService } from '@netlify/templates/ITemplateService';
 import type { IInvoiceService, InvoiceWithTemplate } from '@netlify/invoices/IInvoiceService';
+import type { IPdfGeneratorService } from '@netlify/pdf/IPdfGeneratorService';
 import { NotFoundError } from '@netlify/lib/errors';
 
 export class InvoiceService implements IInvoiceService {
   private readonly repository: IInvoicesRepository;
   private readonly templateService: ITemplateService;
-  constructor(repository: IInvoicesRepository, templateService: ITemplateService) {
+  private readonly pdfGenerator: IPdfGeneratorService;
+
+  constructor(
+    repository: IInvoicesRepository,
+    templateService: ITemplateService,
+    pdfGenerator: IPdfGeneratorService,
+  ) {
     this.repository = repository;
     this.templateService = templateService;
+    this.pdfGenerator = pdfGenerator;
   }
 
   async createInvoice(templateId: number, invoiceData: Record<string, any>, userEmail: string): Promise<Invoice> {
@@ -42,7 +49,7 @@ export class InvoiceService implements IInvoiceService {
       if (pdfBlobKey) {
         try {
           pdfBlob = await blobs.getTemplate(pdfBlobKey);
-        } catch (error) {
+        } catch {
           console.warn(`Invoice PDF blob not found at ${pdfBlobKey}, generating new one`);
           pdfBlobKey = undefined;
           pdfBlob = null;
@@ -51,8 +58,7 @@ export class InvoiceService implements IInvoiceService {
 
       if (!pdfBlob) {
         const templateBlob = await blobs.getTemplate(template.blob_key);
-
-        const generatedPdfBuffer = await this.generateInvoicePdf(
+        const generatedPdfBuffer = await this.pdfGenerator.generate(
           templateBlob,
           template.fields,
           invoice.invoice_data,
@@ -95,10 +101,8 @@ export class InvoiceService implements IInvoiceService {
       if (invoice.pdf_blob_key) {
         try {
           await blobs.deleteTemplate(invoice.pdf_blob_key);
-        } catch (error) {
-          console.warn(
-            `Failed to delete invoice PDF blob ${invoice.pdf_blob_key}, continuing with deletion`,
-          );
+        } catch {
+          console.warn(`Failed to delete invoice PDF blob ${invoice.pdf_blob_key}, continuing with deletion`);
         }
       }
 
@@ -122,69 +126,5 @@ export class InvoiceService implements IInvoiceService {
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(7);
     return `invoice_${invoiceId}_${timestamp}_${randomString}.pdf`;
-  }
-
-  private hexToRgb(hex: string): { r: number; g: number; b: number } {
-    // Remove # if present and normalize
-    const cleanHex = hex.replace('#', '').toLowerCase();
-
-    // Validate hex format (should be 6 characters)
-    if (cleanHex.length !== 6 || !/^[0-9a-f]{6}$/.test(cleanHex)) {
-      console.warn(`Invalid hex color: ${hex}, defaulting to black`);
-      return { r: 0, g: 0, b: 0 };
-    }
-
-    // Parse hex values (0-255 range, convert to 0-1 range for pdf-lib)
-    const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
-    const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
-    const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
-
-    return { r, g, b };
-  }
-
-  private async generateInvoicePdf(
-    templateBlob: ArrayBuffer,
-    templateFields: TemplateField[],
-    invoiceData: Record<string, any>,
-  ): Promise<ArrayBuffer> {
-    // Load PDF document
-    const pdfDoc = await PDFDocument.load(templateBlob);
-    const page = pdfDoc.getPage(0);
-    const { width, height } = page.getSize();
-
-    // Embed default font
-    const font = await pdfDoc.embedFont('Helvetica');
-
-    // Draw text for each field
-    for (const field of templateFields) {
-      const value = invoiceData[field.field_name];
-      if (value !== undefined && value !== null && value !== '') {
-        const textValue = String(value);
-
-        const x = parseFloat(field.x_position.toString());
-        const y = parseFloat(field.y_position.toString());
-        const fontSize = parseFloat(field.font_size.toString());
-
-        const pdfY = height - y - fontSize;
-
-        // Use field color or default to black
-        const colorHex = field.color || '#000000';
-        const colorRgb = this.hexToRgb(colorHex);
-
-        page.drawText(textValue, {
-          x,
-          y: pdfY,
-          size: fontSize,
-          font,
-          color: rgb(colorRgb.r, colorRgb.g, colorRgb.b),
-        });
-      }
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    return pdfBytes.buffer.slice(
-      pdfBytes.byteOffset,
-      pdfBytes.byteOffset + pdfBytes.byteLength,
-    ) as ArrayBuffer;
   }
 }
