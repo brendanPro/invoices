@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, Clipboard, ChevronDown, ChevronRight, FolderPlus } from 'lucide-react';
+import { Trash2, Plus, Clipboard, ChevronDown, ChevronRight, FolderPlus, Pencil, Check, X } from 'lucide-react';
 import type { TemplateField, FieldBounds, FieldData } from '@/types/template-field';
 import type { TemplateFieldGroup } from '@/types/template-group';
 import { FieldForm } from './FieldForm';
@@ -15,6 +15,7 @@ interface FieldSidebarProps {
   onFieldDelete: (fieldId: number) => void;
   onFieldSelect: (field: TemplateField) => void;
   onCreateGroup: (name: string) => void;
+  onRenameGroup: (groupId: number, name: string) => void | Promise<void>;
   onDeleteGroup: (groupId: number) => void;
   onAssignFieldToGroup: (fieldId: number, groupId: number | null) => void;
   onGroupSelect: (groupId: number) => void;
@@ -153,6 +154,7 @@ interface GroupSectionProps {
   onFieldSelect: (field: TemplateField) => void;
   onFieldDelete: (fieldId: number) => void;
   onDeleteGroup: (groupId: number) => void;
+  onRenameGroup: (groupId: number, name: string) => void | Promise<void>;
   onAssignFieldToGroup: (fieldId: number, groupId: number | null) => void;
   onGroupSelect: (groupId: number) => void;
 }
@@ -169,11 +171,39 @@ function GroupSection({
   onFieldSelect,
   onFieldDelete,
   onDeleteGroup,
+  onRenameGroup,
   onAssignFieldToGroup,
   onGroupSelect,
 }: GroupSectionProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(group.name);
+
+  useEffect(() => {
+    if (!renaming) setRenameDraft(group.name);
+  }, [group.name, renaming]);
+
   const colorClass = getGroupColor(groupIndex);
+
+  const finishRename = async () => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) return;
+    if (trimmed === group.name) {
+      setRenaming(false);
+      return;
+    }
+    try {
+      await Promise.resolve(onRenameGroup(group.id, trimmed));
+      setRenaming(false);
+    } catch {
+      /* parent logs; keep editing */
+    }
+  };
+
+  const cancelRename = () => {
+    setRenameDraft(group.name);
+    setRenaming(false);
+  };
 
   return (
     <div className="mb-3">
@@ -182,28 +212,97 @@ function GroupSection({
           isSelected ? 'ring-2 ring-amber-400' : isCopied ? 'ring-2 ring-dashed ring-amber-300 opacity-80' : ''
         }`}
         onClick={() => {
+          if (renaming) return;
           onGroupSelect(group.id);
           setCollapsed((c) => !c);
         }}
       >
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {collapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
-          <span className="font-medium text-sm truncate">{group.name}</span>
-          <span className="text-xs opacity-70">({fields.length})</span>
-          {isCopied && <Clipboard className="w-3 h-3 shrink-0 text-amber-500" aria-label="Copied" />}
+          {renaming ? (
+            <Input
+              autoFocus
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void finishRename();
+                if (e.key === 'Escape') cancelRename();
+              }}
+              className="h-7 text-sm py-0 px-2 flex-1 min-w-0 bg-white/90 border-gray-300"
+              aria-label="Nom du groupe"
+            />
+          ) : (
+            <>
+              <span className="font-medium text-sm truncate">{group.name}</span>
+              <span className="text-xs opacity-70 shrink-0">({fields.length})</span>
+            </>
+          )}
+          {isCopied && !renaming && (
+            <Clipboard className="w-3 h-3 shrink-0 text-amber-500" aria-label="Copied" />
+          )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteGroup(group.id);
-          }}
-          className="p-0.5 h-auto opacity-60 hover:opacity-100 hover:bg-red-100 hover:text-red-600"
-          title="Delete group"
-        >
-          <Trash2 className="w-3 h-3" />
-        </Button>
+        <div className="flex items-center shrink-0 gap-0.5">
+          {renaming ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void finishRename();
+                }}
+                disabled={!renameDraft.trim()}
+                className="p-0.5 h-auto hover:bg-green-100 hover:text-green-700"
+                title="Enregistrer"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelRename();
+                }}
+                className="p-0.5 h-auto opacity-70 hover:opacity-100 hover:bg-gray-200/80"
+                title="Annuler"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenameDraft(group.name);
+                  setRenaming(true);
+                }}
+                className="p-0.5 h-auto opacity-60 hover:opacity-100 hover:bg-white/60"
+                title="Renommer le groupe"
+              >
+                <Pencil className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteGroup(group.id);
+                }}
+                className="p-0.5 h-auto opacity-60 hover:opacity-100 hover:bg-red-100 hover:text-red-600"
+                title="Delete group"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {!collapsed && (
@@ -237,6 +336,7 @@ export function FieldSidebar({
   onFieldDelete,
   onFieldSelect,
   onCreateGroup,
+  onRenameGroup,
   onDeleteGroup,
   onAssignFieldToGroup,
   onGroupSelect,
@@ -378,6 +478,7 @@ export function FieldSidebar({
                 onFieldSelect={onFieldSelect}
                 onFieldDelete={onFieldDelete}
                 onDeleteGroup={onDeleteGroup}
+                onRenameGroup={onRenameGroup}
                 onAssignFieldToGroup={onAssignFieldToGroup}
                 onGroupSelect={onGroupSelect}
               />

@@ -11,6 +11,7 @@ import {
 import {
   useTemplateGroups,
   useCreateGroup,
+  useUpdateGroup,
   useDeleteGroup,
   useMoveGroup,
 } from '@/hooks/useTemplateGroups';
@@ -56,6 +57,7 @@ export function FieldConfigurationStep({
   // React Query hooks — groups
   const { data: groups = [] } = useTemplateGroups(templateId);
   const createGroupMutation = useCreateGroup();
+  const updateGroupMutation = useUpdateGroup();
   const deleteGroupMutation = useDeleteGroup();
   const moveGroupMutation = useMoveGroup();
 
@@ -203,6 +205,13 @@ export function FieldConfigurationStep({
       console.error('Failed to delete group:', err);
     }
   };
+
+  const handleRenameGroup = useCallback(
+    async (groupId: number, name: string) => {
+      await updateGroupMutation.mutateAsync({ templateId, groupId, data: { name } });
+    },
+    [updateGroupMutation, templateId],
+  );
 
   const handleAssignFieldToGroup = async (fieldId: number, groupId: number | null) => {
     const field = fields.find((f) => f.id === fieldId);
@@ -474,6 +483,7 @@ export function FieldConfigurationStep({
         onFieldDelete={handleFieldDelete}
         onFieldSelect={handleFieldSelect}
         onCreateGroup={handleCreateGroup}
+        onRenameGroup={handleRenameGroup}
         onDeleteGroup={handleDeleteGroup}
         onAssignFieldToGroup={handleAssignFieldToGroup}
         onGroupSelect={handleGroupSelect}
